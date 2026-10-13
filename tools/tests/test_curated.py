@@ -109,3 +109,42 @@ def test_curated_yaml_loads():
     cur = yaml.safe_load(CURATED.read_text(encoding="utf-8"))
     assert {i["id"] for i in cur["include"]} >= {22888, 16609, 15366, 24425, 23735, 23769}
     assert len(cur["excl_merge"]) == 9
+
+
+def test_include_synthesizes_buff_without_spell():
+    buffs = {}
+    cur = {"include": [{"id": 900001, "cat": "WORLD", "name": "Made Up Blessing",
+                        "fx": {"SPI": 10, "MP5": 4}, "dur": 7200, "lvl": 50,
+                        "sources": [{"kind": "npc", "npc": 14392}]}]}
+    warns = apply_curated(buffs, [], cur, qdata(), AMAP)
+    b = buffs[900001]
+    assert warns == []
+    assert (b.name, b.cat, b.fx, b.dur, b.lvl, b.excl, b.burst, b.items) == \
+        ("Made Up Blessing", "WORLD", {"SPI": 10.0, "MP5": 4.0}, 7200, 50, "WORLD:Made Up Blessing", False, [])
+    assert b.sources[0].name == "Overlord Runthak"
+
+
+def test_include_synthesized_short_buff_is_burst_and_lvl_defaults_to_zero():
+    buffs = {}
+    apply_curated(buffs, [], {"include": [{"id": 5, "cat": "WORLD", "name": "Short", "fx": {"AP": 1},
+                                           "dur": 30}]}, qdata(), AMAP)
+    assert buffs[5].burst is True and buffs[5].lvl == 0
+
+
+def test_include_rejects_unknown_category_and_stat_keys():
+    un = [mk(1, "A")]
+    buffs = {}
+    cur = {"include": [{"id": 1, "cat": "WORLDS"},
+                       {"id": 2, "cat": "WORLD", "name": "B", "fx": {"BOGUS": 1}, "dur": 60}]}
+    warns = apply_curated(buffs, un, cur, qdata(), AMAP)
+    assert buffs == {} and [b.id for b in un] == [1]
+    assert len(warns) == 2 and "WORLDS" in warns[0] and "BOGUS" in warns[1]
+
+
+def test_override_rejects_unknown_category_and_stat_keys():
+    b = mk(5, "X", "FOOD")
+    buffs = {5: b}
+    warns = apply_curated(buffs, [], {"override": {5: {"cat": "SNACK", "fx": {"NOPE": 2}, "dur": 7}}},
+                          qdata(), AMAP)
+    assert (b.cat, b.fx, b.dur) == ("FOOD", {"STR": 5}, 7)
+    assert len(warns) == 2 and "SNACK" in warns[0] and "NOPE" in warns[1]

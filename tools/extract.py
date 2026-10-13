@@ -1,23 +1,39 @@
 """Extract stat buffs from DB2 table rows into Buff records."""
+import re
 from collections import defaultdict
 
 from tools.model import Buff, Rank
 
 APPLY_EFFECTS = {6, 35, 65}
 PRIMARY = {0: "STR", 1: "AGI", 2: "STA", 3: "INT", 4: "SPI"}
-# Auras that map straight to a stat key.  290 (MOD_CRIT_PCT) is not in the
-# original rule list but carries e.g. the +2% crit of Elixir of the Mongoose.
+# Auras that map straight to a stat key.
 SIMPLE_AURAS = {
-    137: "STAT_PCT", 99: "AP", 124: "RAP", 135: "HEAL", 142: "ARMOR_PCT",
-    34: "HP", 35: "MANA", 85: "MP5", 84: "HP5", 52: "CRIT", 290: "CRIT",
+    99: "AP", 124: "RAP", 135: "HEAL", 142: "ARMOR_PCT",
+    34: "HP", 35: "MANA", 85: "MP5", 84: "HP5", 52: "CRIT",
     57: "SPELL_CRIT", 71: "SPELL_CRIT", 54: "HIT", 55: "SPELL_HIT",
 }
+# 290 (MOD_CRIT_PCT) is crit with all spells and attacks: Forever's own texts say so
+# (Slip'kik's Savvy, Songflower Serenade, Rallying Cry, caster Elixir of the Owl).
+MULTI_AURAS = {290: ("CRIT", "SPELL_CRIT")}
+ARMOR_AURAS = {22, 674}   # MOD_RESISTANCE / Forever's armor aura (Mark of the Wild); misc 1 = armor
+AURA_STAT_PCT = 137       # MOD_TOTAL_STAT_PERCENTAGE; only misc -1 (all stats) has a stat key
+AURA_ARMOR_PCT = 101      # MOD_RESISTANCE_PCT; misc 1 = armor
+AURA_PERIODIC_ENERGIZE = 24
+AURA_MAX_POWER = 418
+POWER_MANA = 0
+TARGET_PET = 5            # ImplicitTarget: the caster's pet (Intimidation, Blessing of the Black Book)
+# Test / placeholder / deprecated spells and items, e.g. "(DNT) ... - TEST RAID SPELL",
+# "Test Sharpen Blade", "ALEX BUG TEST ITEM", "Deprecated Reed Pipe".
+JUNK_RE = re.compile(r"\(DNT\)|\[(?:DNT|PH)\]|\bTEST\b|^Test\b|^Copy of\b|^Deprecated\b")
+CLASS_SKILL_CATEGORY = 7  # SkillLine.CategoryID of class skill lines
+NEVER_LEARNED = 3         # SkillLineAbility.AcquireMethod (e.g. Season of Discovery rune spells)
 ITEM_MOD = {3: "AGI", 4: "STR", 5: "INT", 6: "SPI", 7: "STA"}
 CLASS_SETS = {
     3: "MAGE", 4: "WARRIOR", 5: "WARLOCK", 6: "PRIEST", 7: "DRUID",
     8: "ROGUE", 9: "HUNTER", 10: "PALADIN", 11: "SHAMAN",
 }
 CONSUMABLE_CATS = {1: "POTION", 2: "ELIXIR", 3: "FLASK", 4: "SCROLL", 5: "FOOD", 6: "WEAPON"}
+CONSUMABLE_OTHER = 8
 BURST_MAX = 600
 ENCHANT_EFFECT = 54
 TRIGGER_DEPTH = 2
@@ -36,7 +52,7 @@ def _positive(fx: dict[str, float]) -> dict[str, float]:
 def _spell_fx(effects: list[dict]) -> dict[str, float]:
     fx: dict[str, float] = defaultdict(float)
     for r in effects:
-        if _i(r, "Effect") not in APPLY_EFFECTS:
+        if _i(r, "Effect") not in APPLY_EFFECTS or _i(r, "ImplicitTarget_0") == TARGET_PET:
             continue
         aura, misc = _i(r, "EffectAura"), _i(r, "EffectMiscValue_0")
         val = int(float(r.get("EffectBasePointsF") or 0))
@@ -47,21 +63,40 @@ def _spell_fx(effects: list[dict]) -> dict[str, float]:
         elif aura == 13:
             if misc & 126:
                 fx["SPELL_DMG"] += val
-        elif aura == 22:
+        elif aura in ARMOR_AURAS:
             if misc == 1:
                 fx["ARMOR"] += val
+        elif aura == AURA_STAT_PCT:
+            if misc == -1:
+                fx["STAT_PCT"] += val
+        elif aura == AURA_ARMOR_PCT:
+            if misc == 1:
+                fx["ARMOR_PCT"] += val
+        elif aura == AURA_PERIODIC_ENERGIZE:
+            period = _i(r, "EffectAuraPeriod")
+            if misc == POWER_MANA and period > 0:
+                fx["MP5"] += val * 5000 / period
+        elif aura == AURA_MAX_POWER:
+            if misc == POWER_MANA:
+                fx["MANA"] += val
+        elif aura in MULTI_AURAS:
+            for k in MULTI_AURAS[aura]:
+                fx[k] += val
         elif aura in SIMPLE_AURAS:
             fx[SIMPLE_AURAS[aura]] += val
     return _positive(fx)
 
 
-def _item_category(item: dict | None) -> str | None:
+def _item_category(item: dict | None, has_eating: bool = False) -> str | None:
+    """has_eating: the item also carries an eating/drinking effect (food among "Other" consumables)."""
     if item is None:
         return None
     cls, sub, inv = _i(item, "ClassID"), _i(item, "SubclassID"), _i(item, "InventoryType")
     if inv == 12 or cls in (2, 4):
         return "TRINKET"
     if cls == 0:
+        if sub == CONSUMABLE_OTHER and has_eating:
+            return "FOOD"
         return CONSUMABLE_CATS.get(sub)
     if cls == 12:
         return "QUEST"
@@ -86,6 +121,11 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
     items = {_i(r, "ID"): r for r in t.get("Item", [])}
     sparse = {_i(r, "ID"): r for r in t.get("ItemSparse", [])}
     item_effect = {_i(r, "ID"): r for r in t.get("ItemEffect", [])}
+    class_lines = {_i(r, "ID") for r in t.get("SkillLine", [])
+                   if _i(r, "CategoryID") == CLASS_SKILL_CATEGORY}
+    # trainer-learnable class spells; NPC copies of class spells have no such row
+    learnable = {_i(r, "Spell") for r in t.get("SkillLineAbility", [])
+                 if _i(r, "SkillLine") in class_lines and _i(r, "AcquireMethod") != NEVER_LEARNED}
 
     fx_cache: dict[int, dict[str, float]] = {}
 
@@ -128,14 +168,21 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
         return dur
 
     def excluded(sid: int) -> bool:
-        return "Totem" in names.get(sid, "") or dur_of(sid) <= 0
+        name = names.get(sid, "")
+        return "Totem" in name or bool(JUNK_RE.search(name)) or dur_of(sid) <= 0
+
+    def is_class_spell(sid: int) -> bool:
+        return class_set.get(sid) in CLASS_SETS and sid in learnable
 
     # on-use (TriggerType 0) item spells -> items
     use_items: dict[int, list[int]] = defaultdict(list)
     for r in t.get("ItemXItemEffect", []):
         eff = item_effect.get(_i(r, "ItemEffectID"))
+        iid = _i(r, "ItemID")
+        if JUNK_RE.search(sparse.get(iid, {}).get("Display_lang") or ""):
+            continue
         if eff and _i(eff, "TriggerType") == 0 and _i(eff, "SpellID"):
-            use_items[_i(eff, "SpellID")].append(_i(r, "ItemID"))
+            use_items[_i(eff, "SpellID")].append(iid)
 
     # aura spell -> items, following EffectTriggerSpell up to TRIGGER_DEPTH
     aura_items: dict[int, list[int]] = defaultdict(list)
@@ -155,17 +202,25 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
                         nxt.append(trig)
             frontier = nxt
 
+    def eating(sid: int) -> bool:
+        """Eating/drinking channel (HP5/MP5 only, <= 60 s), not a Well Fed style buff."""
+        fx = spell_fx(sid)
+        return bool(fx) and set(fx) <= {"HP5", "MP5"} and 0 < dur_of(sid) <= 60
+
+    eating_items = {iid for sid, ids in aura_items.items() if eating(sid) for iid in ids}
+
     buffs: dict[int, Buff] = {}
     unclassified: list[Buff] = []
 
     for sid, item_ids in aura_items.items():
-        if excluded(sid):
+        if excluded(sid) or is_class_spell(sid):
             continue
         eid, efx = enchant_info(sid)
         fx = efx if eid is not None else spell_fx(sid)
         if not fx:
             continue
-        classified = [(iid, c) for iid in item_ids if (c := _item_category(items.get(iid)))]
+        classified = [(iid, c) for iid in item_ids
+                      if (c := _item_category(items.get(iid), iid in eating_items))]
         if eid is not None:
             cat, ids = "WEAPON", item_ids
         elif classified:
@@ -173,7 +228,7 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
             ids = [iid for iid, c in classified if c == cat]
         else:
             cat, ids = None, item_ids
-        if cat == "FOOD" and set(fx) <= {"HP5", "MP5"} and dur_of(sid) <= 60:
+        if cat == "FOOD" and eating(sid):
             continue  # eating effect, not the Well Fed buff
         lvl = min((_i(sparse.get(iid, {}), "RequiredLevel") for iid in ids), default=0)
         buff = make(sid, cat, fx, lvl, ids, enchant=eid)
@@ -185,7 +240,7 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
     # class buffs, grouped by (class, name)
     groups: dict[tuple[str, str], list[int]] = defaultdict(list)
     for sid, cset in class_set.items():
-        if cset in CLASS_SETS and sid not in aura_items and not excluded(sid) and spell_fx(sid):
+        if is_class_spell(sid) and not excluded(sid) and spell_fx(sid):
             groups[(CLASS_SETS[cset], names.get(sid, ""))].append(sid)
     for (cls, _name), sids in groups.items():
         sids.sort(key=lambda s: (levels.get(s, 0), s))

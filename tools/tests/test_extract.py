@@ -2,14 +2,16 @@
 from tools.extract import extract_buffs
 
 
-def eff(spell, aura, value, misc=0, effect=6, trigger=0):
+def eff(spell, aura, value, misc=0, effect=6, trigger=0, period=0):
     return {"SpellID": str(spell), "Effect": str(effect), "EffectAura": str(aura),
             "EffectBasePointsF": str(value), "EffectMiscValue_0": str(misc),
-            "EffectTriggerSpell": str(trigger)}
+            "EffectTriggerSpell": str(trigger), "EffectAuraPeriod": str(period)}
 
 
-def tables(spells, effects, durations, items=(), class_sets=None, levels=None, enchants=()):
-    """spells: {id: name}; durations: {spell_id: seconds}; items: (id, class, sub, inv, reqlevel, [spell ids])."""
+def tables(spells, effects, durations, items=(), class_sets=None, levels=None, enchants=(), learn=None):
+    """spells: {id: name}; durations: {spell_id: seconds};
+    items: (id, class, sub, inv, reqlevel, [spell ids][, item name]);
+    learn: {spell_id: AcquireMethod} trainer rows on a class skill line (default: every class_sets spell, 0)."""
     t = {
         "SpellName": [{"ID": str(i), "Name_lang": n} for i, n in spells.items()],
         "SpellEffect": effects,
@@ -21,11 +23,15 @@ def tables(spells, effects, durations, items=(), class_sets=None, levels=None, e
                         for s, lv in (levels or {}).items()],
         "Item": [], "ItemSparse": [], "ItemEffect": [], "ItemXItemEffect": [],
         "SpellItemEnchantment": list(enchants),
+        "SkillLine": [{"ID": "1", "CategoryID": "7"}],
+        "SkillLineAbility": [{"Spell": str(s), "SkillLine": "1", "AcquireMethod": str(a)}
+                             for s, a in (learn if learn is not None
+                                          else {s: 0 for s in (class_sets or {})}).items()],
     }
     n = 0
-    for iid, cls, sub, inv, req, sp_ids in items:
+    for iid, cls, sub, inv, req, sp_ids, *name in items:
         t["Item"].append({"ID": str(iid), "ClassID": str(cls), "SubclassID": str(sub), "InventoryType": str(inv)})
-        t["ItemSparse"].append({"ID": str(iid), "RequiredLevel": str(req)})
+        t["ItemSparse"].append({"ID": str(iid), "RequiredLevel": str(req), "Display_lang": name[0] if name else ""})
         for sp in sp_ids:
             n += 1
             t["ItemEffect"].append({"ID": str(n), "TriggerType": "0", "SpellID": str(sp)})
@@ -39,7 +45,7 @@ def test_mongoose_elixir_agi_crit():
                {17538: 3600}, items=[(13452, 0, 2, 0, 46, [17538])])
     buffs, unclassified = extract_buffs(t, {17538})
     b = buffs[17538]
-    assert b.fx == {"AGI": 25, "CRIT": 2}
+    assert b.fx == {"AGI": 25, "CRIT": 2, "SPELL_CRIT": 2}  # aura 290 = all crit
     assert (b.cat, b.dur, b.burst, b.lvl, b.items, b.new) == ("ELIXIR", 3600, False, 46, [13452], False)
     assert b.excl == "ELIXIR:Elixir of the Mongoose"
     assert unclassified == []
@@ -129,3 +135,102 @@ def test_mixed_positive_negative_keeps_only_positives():
     t = tables({701: "Trade-off"}, [eff(701, 29, 20, misc=0), eff(701, 29, -10, misc=3), eff(701, 22, 0, misc=1)],
                {701: 60}, items=[(702, 0, 1, 0, 1, [701])])
     assert extract_buffs(t, set())[0][701].fx == {"STR": 20}
+
+
+def test_class_buff_ignores_unlearnable_npc_copies():
+    # 23948 is an NPC copy of Power Word: Fortitude (class set 6, no trainer row, weaker).
+    t = tables({10938: "Power Word: Fortitude", 23948: "Power Word: Fortitude"},
+               [eff(10938, 29, 70, misc=2), eff(23948, 29, 54, misc=2)],
+               {10938: 3600, 23948: 3600}, class_sets={10938: 6, 23948: 6},
+               levels={10938: 60, 23948: 60}, learn={10938: 0})
+    buffs, unclassified = extract_buffs(t, set())
+    assert list(buffs) == [10938] and buffs[10938].fx == {"STA": 70}
+    assert [r.spell for r in buffs[10938].ranks] == [10938]
+    assert unclassified == []
+
+
+def test_never_learned_rune_spell_not_a_class_buff():
+    t = tables({403215: "Commanding Shout"}, [eff(403215, 29, 2, misc=2)], {403215: 300},
+               class_sets={403215: 4}, learn={403215: 3})
+    assert extract_buffs(t, set()) == ({}, [])
+
+
+def test_learnable_class_spell_wins_over_item_link():
+    # Arcane Intellect is also cast by a (deprecated) armor item; it is still a mage buff.
+    t = tables({1459: "Arcane Intellect"}, [eff(1459, 29, 2, misc=3)], {1459: 3600},
+               items=[(1912, 4, 0, 0, 1, [1459])], class_sets={1459: 3}, levels={1459: 1})
+    b = extract_buffs(t, set())[0][1459]
+    assert (b.cat, b.cls, b.items) == ("CLASS", "MAGE", [])
+
+
+def test_test_and_dnt_spells_excluded():
+    t = tables({7407: "Test Sharpen Blade", 1286253: "(DNT) Blessing of Might - TEST RAID SPELL"},
+               [eff(7407, 99, 5), eff(1286253, 99, 112)], {7407: 3600, 1286253: 1800},
+               items=[(6213, 0, 1, 0, 1, [7407])])
+    assert extract_buffs(t, set()) == ({}, [])
+
+
+def test_junk_named_item_ignored():
+    t = tables({12686: "Enrage"}, [eff(12686, 99, 102)], {12686: 15},
+               items=[(17122, 12, 0, 0, 1, [12686], "ALEX BUG TEST ITEM")])
+    assert extract_buffs(t, set()) == ({}, [])
+
+
+def test_periodic_mana_is_mp5():
+    t = tables({25290: "Blessing of Wisdom", 9: "Fast Mana"},
+               [eff(25290, 24, 40, misc=0, period=5000), eff(9, 24, 10, misc=0, period=2000)],
+               {25290: 3600, 9: 3600}, class_sets={25290: 10, 9: 10})
+    buffs, _ = extract_buffs(t, set())
+    assert buffs[25290].fx == {"MP5": 40} and buffs[9].fx == {"MP5": 25}
+
+
+def test_periodic_rage_ignored():
+    t = tables({5229: "Enrage"}, [eff(5229, 24, 20, misc=1, period=1000)], {5229: 3600},
+               class_sets={5229: 11})
+    assert extract_buffs(t, set()) == ({}, [])
+
+
+def test_armor_aura_674_and_max_mana_418():
+    t = tables({9885: "Mark of the Wild", 17627: "Distilled Wisdom"},
+               [eff(9885, 674, 385, misc=1), eff(9885, 29, 16, misc=-1), eff(9885, 674, -10, misc=2),
+                eff(17627, 418, 2000, misc=0), eff(17627, 418, 50, misc=2)],
+               {9885: 3600, 17627: 7200}, class_sets={9885: 7}, items=[(13511, 0, 3, 0, 50, [17627])])
+    buffs, _ = extract_buffs(t, set())
+    assert buffs[9885].fx == {"ARMOR": 385, "STR": 16, "AGI": 16, "STA": 16, "INT": 16, "SPI": 16}
+    assert buffs[17627].fx == {"MANA": 2000}
+
+
+def test_crit_aura_290_is_melee_and_spell():
+    t = tables({1304751: "Slip'kik's Savvy"}, [eff(1304751, 290, 3)], {1304751: 7200})
+    assert extract_buffs(t, set())[1][0].fx == {"CRIT": 3, "SPELL_CRIT": 3}
+
+
+def test_stat_pct_only_for_all_stats():
+    t = tables({20217: "Blessing of Kings", 1304753: "Mol'dar's Moxie"},
+               [eff(20217, 137, 10, misc=-1), eff(1304753, 137, 15, misc=2)],
+               {20217: 3600, 1304753: 7200}, class_sets={20217: 10})
+    buffs, unclassified = extract_buffs(t, set())
+    assert buffs[20217].fx == {"STAT_PCT": 10} and unclassified == []
+
+
+def test_armor_pct_aura_101():
+    t = tables({1304771: "Sayge's Dark Fortune of Armor"}, [eff(1304771, 101, 10, misc=1)], {1304771: 7200})
+    assert extract_buffs(t, set())[1][0].fx == {"ARMOR_PCT": 10}
+
+
+def test_other_consumable_with_eating_effect_is_food():
+    # Consumable subclass 8 ("Other") food: eating effect + separate on-use stat buff on one item.
+    t = tables({470362: "Food", 470361: "Increased Spell Damage", 10667: "Rage of Ages"},
+               [eff(470362, 84, 358), eff(470361, 13, 12, misc=126), eff(10667, 29, 25, misc=0)],
+               {470362: 30, 470361: 600, 10667: 3600},
+               items=[(232436, 0, 8, 0, 1, [470362, 470361]), (8410, 0, 8, 0, 1, [10667])])
+    buffs, unclassified = extract_buffs(t, set())
+    assert list(buffs) == [470361] and buffs[470361].cat == "FOOD"
+    assert [b.id for b in unclassified] == [10667]
+
+
+def test_effects_on_pet_ignored():
+    # Intimidation / Blessing of the Black Book buff the pet (ImplicitTarget 5), not the player.
+    pet = eff(19577, 290, 100) | {"ImplicitTarget_0": "5"}
+    t = tables({19577: "Intimidation"}, [pet], {19577: 15}, class_sets={19577: 9})
+    assert extract_buffs(t, set()) == ({}, [])
