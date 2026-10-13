@@ -237,6 +237,7 @@ def routeless_item_buffs(buffs: dict[int, Buff], q: QuestieData) -> list[Buff]:
     out = []
     for bid in sorted(buffs):
         b = buffs[bid]
-        if b.items and not any(s.kind == "craft" for s in b.sources)                 and all(item_acquisition_level(q.items.get(i), q) is None for i in b.items):
+        if (b.items and not any(s.kind == "craft" for s in b.sources)
+                and all(item_acquisition_level(q.items.get(i), q) is None for i in b.items)):
             out.append(b)
     return out
