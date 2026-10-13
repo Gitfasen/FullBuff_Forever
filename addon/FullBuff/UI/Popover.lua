@@ -54,6 +54,7 @@ local function newLine()
       local d = db()
       d.collapsed = d.collapsed or {}
       d.collapsed[self.fbCat] = (not d.collapsed[self.fbCat]) or nil
+      ns.ViewModel:Invalidate()
       Popover:Refresh()
     elseif self.fbKind == "item" then
       ns.UI.OpenDetail(self.fbId)
@@ -106,12 +107,19 @@ end
 
 function Popover:Refresh()
   if not frame then return end
-  local vm = ns.ViewModel:Build()
+  local vm = ns.ViewModel:Get()
   local L = ns.L
   titleText:SetText(L.TITLE)
   onlyMissingLabel:SetText(L.SHOW_ONLY_MISSING)
   onlyMissing:SetChecked(db().onlyMissing and true or false)
-  staleText:SetText(vm.header.stale and L.STALE_AFTER_COMBAT or "")
+  -- one line under the title: the stale warning wins over the spec hint
+  if vm.header.stale then
+    staleText:SetText(L.STALE_AFTER_COMBAT)
+    staleText:SetTextColor(1, 0.6, 0.2)
+  else
+    staleText:SetText(vm.header.specHint or "")
+    staleText:SetTextColor(0.7, 0.7, 0.7)
+  end
   headerText:SetText(string.format("%s - %s - %d", vm.header.class or "", vm.header.specName or "", vm.header.level or 0))
 
   used = 0
@@ -225,6 +233,7 @@ local function create()
   onlyMissingLabel:SetPoint("LEFT", onlyMissing, "RIGHT", 2, 0)
   onlyMissing:SetScript("OnClick", function(self)
     db().onlyMissing = self:GetChecked() and true or false
+    ns.ViewModel:Invalidate()
     Popover:Refresh()
     if ns.UI.Launcher then ns.UI.Launcher:Refresh() end
   end)

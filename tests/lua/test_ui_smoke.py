@@ -162,3 +162,24 @@ def test_libs_do_not_reference_questie():
     hits = [str(f.relative_to(ADDON_DIR)) for f in (ADDON_DIR / "Libs").rglob("*")
             if f.is_file() and "questie" in f.read_text(encoding="utf-8", errors="ignore").lower()]
     assert hits == []
+
+
+def test_viewmodel_built_once_per_state_change(addon):
+    a = addon()
+    a.load_addon()
+    a.run("ns.UI.Launcher:Create(); ns.UI.Popover:Toggle(); ns.UI.OpenDetail(10157)")
+    a.run("""
+      __builds, __catalogs = 0, 0
+      local build, cat = ns.ViewModel.Build, ns.Catalog.Build
+      ns.ViewModel.Build = function(...) __builds = __builds + 1 return build(...) end
+      ns.Catalog.Build = function(...) __catalogs = __catalogs + 1 return cat(...) end
+    """)
+    a.run("ns.PlayerState:Refresh()")
+    a.run("ns.UI.Launcher:Refresh(); ns.UI.Popover:Refresh()")  # e.g. a tooltip re-read
+    assert a.eval("__builds") == 1
+    assert a.eval("__catalogs") == 1  # launcher, popover and detail card share it
+    a.run("ns.SetLanguage('uk')")
+    assert a.eval("__builds") == 2
+    a.run("ns.Options:SetShowAllStats(true)")
+    assert a.eval("__builds") == 3
+    assert a.errors() == []

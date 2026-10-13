@@ -28,7 +28,7 @@ local function charDb()
 end
 
 local function recompute()
-  ns.PlayerState:Refresh()
+  ns.PlayerState:Refresh(true)
 end
 
 function Options:SetSpecOverride(spec)

@@ -77,6 +77,7 @@ L.SRC_NPC = "НІП"
 L.SRC_OBJECT = "Об'єкт"
 L.SRC_CAMPING = "Табір"
 
+L.MORE_FMT = " і ще %d"
 L.SPEC_FMT = "Спеціалізація %d"
 L.COL_STAT = "Характеристика"
 L.COL_NOW = "Зараз"

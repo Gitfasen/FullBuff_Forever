@@ -1,10 +1,11 @@
 local _, ns = ...
 
 -- Map pins for buff sources (world map + minimap) through HereBeDragons-Pins.
--- Persisted in ns.CharDB.pins as ["<buffId>:<sourceIndex>"] = true; the source
--- index is the position in ns.Sources[buffId]. Only the key is stored: position
--- and text are read from ns.Sources on every restore, so a source that no longer
--- exists or lost its coordinates is dropped silently.
+-- Persisted in ns.CharDB.pins as ["<buffId>:<sourceIndex>"] = { mapID, x, y }; the
+-- source index is the position in ns.Sources[buffId]. Text is read from ns.Sources;
+-- on restore a pin whose source no longer exists, lost its coordinates or now has
+-- other coordinates (the index was reused by a data update) is dropped silently.
+-- A legacy `true` entry (no coordinates saved) is kept and upgraded.
 -- Right-click on a pin removes it. No C_Map user waypoints (unreliable on Forever).
 --
 -- Pin icon: the red cross raid marker "Interface\\TargetingFrame\\UI-RaidTargetingIcon_7"
@@ -38,6 +39,24 @@ local function sourceFor(buffId, index)
   local list = ns.Sources and ns.Sources[buffId]
   local src = list and list[index]
   if src and ns.Detail.HasCoords(src) then return src end
+end
+
+local EPS = 1e-6
+
+local function saved(src)
+  return { mapID = src.mapID, x = src.x, y = src.y }
+end
+
+-- The source a saved pin still points at, or nil when it is gone or moved.
+local function resolve(key, entry)
+  local buffId, index = parseKey(key)
+  local src = buffId and sourceFor(buffId, index)
+  if not src then return nil end
+  if type(entry) == "table" and (entry.mapID ~= src.mapID
+      or math.abs((entry.x or -1) - src.x) > EPS or math.abs((entry.y or -1) - src.y) > EPS) then
+    return nil
+  end
+  return src, buffId, index
 end
 
 local function store()
@@ -114,7 +133,7 @@ function Pins:Add(buffId, index)
   local db = store()
   if not src or not db then return false end
   local key = makeKey(buffId, index)
-  db[key] = true
+  db[key] = saved(src)
   draw(key, src)
   changed()
   return true
@@ -130,7 +149,7 @@ function Pins:AddAll(buffId)
     local src = sourceFor(buffId, i)
     if src then
       local key = makeKey(buffId, i)
-      db[key] = true
+      db[key] = saved(src)
       draw(key, src)
       n = n + 1
     end
@@ -166,9 +185,8 @@ function Pins:List()
   local out = {}
   local db = store()
   if not db then return out end
-  for key in pairs(db) do
-    local buffId, index = parseKey(key)
-    local src = buffId and sourceFor(buffId, index)
+  for key, entry in pairs(db) do
+    local src, buffId, index = resolve(key, entry)
     if src then
       local buff = ns.Buffs and ns.Buffs[buffId]
       out[#out + 1] = {
@@ -196,13 +214,16 @@ function Pins:Restore()
   local keys = {}
   for key in pairs(drawn) do keys[#keys + 1] = key end
   for _, key in ipairs(keys) do undraw(key) end
-  local stale = {}
-  for key in pairs(db) do
-    local buffId, index = parseKey(key)
-    local src = buffId and sourceFor(buffId, index)
-    if src then draw(key, src) else stale[#stale + 1] = key end
+  local stale, keep = {}, {}
+  for key, entry in pairs(db) do
+    local src = resolve(key, entry)
+    if src then keep[key] = src else stale[#stale + 1] = key end
   end
   for _, key in ipairs(stale) do db[key] = nil end
+  for key, src in pairs(keep) do
+    db[key] = saved(src) -- upgrades legacy `true` entries
+    draw(key, src)
+  end
 end
 
 ns.Events:On("FULLBUFF_LOADED", function() Pins:Restore() end)

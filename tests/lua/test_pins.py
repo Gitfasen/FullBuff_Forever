@@ -120,3 +120,22 @@ def test_nil_zone_name_and_no_hbd(addon):
     assert calls(a) == []
     assert a.eval("ns.CharDB.pins['1:1'] ~= nil") is True
     assert a.errors() == []
+
+
+def test_pin_stores_coords_and_restore_drops_moved_source(addon):
+    a = boot(addon)
+    a.run("ns.Pins:Add(1, 1); ns.Pins:Add(1, 3)")
+    saved = a.eval("ns.CharDB.pins['1:1']")
+    assert (saved["mapID"], saved["x"], saved["y"]) == (1429, 0.25, 0.5)
+    # data update: source 1 of buff 1 is now somewhere else (index reused)
+    a.run("ns.Sources[1][1] = {kind='vendor', name='Other', mapID=1453, x=0.6, y=0.7}")
+    a.run("ns.Pins:Restore()")
+    assert keys(a) == ["1:3"]
+    assert a.eval("ns.CharDB.pins['1:1']") is None
+
+
+def test_legacy_true_pin_upgraded_with_coords(addon):
+    a = boot(addon)
+    a.run("ns.CharDB.pins['2:1'] = true; ns.Pins:Restore()")
+    assert keys(a) == ["2:1"]
+    assert a.eval("ns.CharDB.pins['2:1'].mapID") == 1429

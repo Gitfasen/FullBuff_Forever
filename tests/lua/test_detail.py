@@ -131,7 +131,8 @@ def test_catalog_error_is_reported_then_falls_back(addon):
     a = addon()
     a.load_addon()
     a.run(SETUP % 1)
-    a.run("ns.Catalog.Build = function() error('boom') end; __ns.__m2 = ns.Detail:Model(1)")
+    a.run("ns.Catalog.Build = function() error('boom') end; ns.ViewModel:Invalidate()"
+          "; __ns.__m2 = ns.Detail:Model(1)")
     assert a.eval("__ns.__m2.name") == "Strength"
     assert any("boom" in e for e in a.errors())
 
@@ -143,3 +144,18 @@ def test_card_in_special_frames_once(addon):
     assert a.eval("(function() local n = 0 for _, v in ipairs(UISpecialFrames) do "
                   "if v == 'FullBuffDetail' then n = n + 1 end end return n end)()") == 1
     assert a.errors() == []
+
+
+def test_group_members_text_capped_at_six(addon):
+    a = addon()
+    a.load_addon()
+    names = "{" + ", ".join("'B%d'" % i for i in range(1, 10)) + "}"
+    assert a.eval("ns.Detail.MembersText(%s)" % names) == "B1, B2, B3, B4, B5, B6, +3 more"
+    assert a.eval("ns.Detail.MembersText({'A', 'B'})") == "A, B"
+    a.run("ns.SetLanguage('uk')")
+    assert a.eval("ns.Detail.MembersText(%s)" % names) == "B1, B2, B3, B4, B5, B6 і ще 3"
+
+
+def test_model_has_no_unused_status(addon):
+    a, m = model(addon, 1)
+    assert m["status"] is None

@@ -40,7 +40,7 @@ function Launcher:ResetPosition()
 end
 
 local function showTooltip(self)
-  local vm = ns.ViewModel:Build()
+  local vm = ns.ViewModel:Get()
   local L = ns.L
   GameTooltip:SetOwner(self, "ANCHOR_LEFT")
   GameTooltip:AddLine(L.TITLE)
@@ -62,7 +62,7 @@ end
 
 function Launcher:Refresh()
   if not button then return end
-  local vm = ns.ViewModel:Build()
+  local vm = ns.ViewModel:Get()
   badgeText:SetText(vm.badge > 0 and tostring(vm.badge) or "")
   if GameTooltip:IsShown() and GameTooltip:GetOwner() == button then showTooltip(button) end
 end

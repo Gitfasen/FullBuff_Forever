@@ -4,7 +4,9 @@ local _, ns = ...
 -- No frame code here, so it is fully testable.
 --
 -- Build(state?, catalog?) -> {
---   header  = { class, specName, level, stale, rows = { {stat,label,current,max,diff}... } },
+--   header  = { class, specName, specHint, level, stale, rows = { {stat,label,current,max,diff}... } },
+--             (specName: the talent tree's name, else "Specialization N"; specHint: set
+--              while the spec is not detected automatically)
 --   sections= { { cat, title, activeCount, total, collapsed,
 --                 items = { {id, icon, name, valueText, status, recommended} } } },
 --   badge   = number of recommended buffs that can still be added (non-burst),
@@ -112,7 +114,8 @@ function VM:Build(state, catalog)
 
   local header = {
     class = className(state.class),
-    specName = string.format(L.SPEC_FMT, state.spec or 1),
+    specName = state.specName or string.format(L.SPEC_FMT, state.spec or 1),
+    specHint = (state.specAuto == false) and L.SPEC_HINT or nil,
     level = state.level,
     stale = state.stale and true or false,
     rows = {},
@@ -152,3 +155,27 @@ function VM:Build(state, catalog)
     tooltip = { progress = calc.percentOfMax, missing = names },
   }
 end
+
+-- Get() -> the view model of the current PlayerState snapshot, built once and
+-- shared by the launcher, its tooltip, the popover and the detail card (vm.catalog
+-- is the catalog it was built from). Rebuilt for a new snapshot (FULLBUFF_STATE),
+-- a language change, or after Invalidate() (display options).
+local cache
+
+function VM:Invalidate()
+  cache = nil
+end
+
+function VM:Get()
+  local state = ns.PlayerState:Get()
+  local lang = ns.GetLanguage and ns.GetLanguage()
+  if cache and cache.state == state and cache.lang == lang then return cache.vm end
+  local catalog = ns.Catalog:Build(state)
+  local vm = self:Build(state, catalog)
+  vm.catalog = catalog
+  cache = { vm = vm, state = state, lang = lang }
+  return vm
+end
+
+ns.Events:On("FULLBUFF_STATE", function() VM:Invalidate() end)
+ns.Events:On("FULLBUFF_LANGUAGE", function() VM:Invalidate() end)

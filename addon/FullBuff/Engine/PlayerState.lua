@@ -82,21 +82,24 @@ local function pickBuff(candidates, auraData, level)
   return best
 end
 
+-- Returns spec, specAuto, specName (the talent tree's name when the client gives one).
 local function readSpec()
   local override = ns.CharDB and ns.CharDB.specOverride
   local bestTree, bestPoints, total = 1, -1, 0
+  local names = {}
   if type(GetSpecializationInfo) == "function" then
     for i = 1, 3 do
-      local points = select(7, GetSpecializationInfo(i))
+      local _, name, _, _, _, _, points = GetSpecializationInfo(i)
+      if type(name) == "string" and name ~= "" and not isSecret(name) then names[i] = name end
       if type(points) == "number" then
         total = total + points
         if points > bestPoints then bestTree, bestPoints = i, points end
       end
     end
   end
-  if override then return override, true end
-  if total < MIN_SPEC_POINTS then return 1, false end
-  return bestTree, true
+  if override then return override, true, names[override] end
+  if total < MIN_SPEC_POINTS then return 1, false, names[1] end
+  return bestTree, true, names[bestTree]
 end
 
 local function call(name, ...)
@@ -214,7 +217,28 @@ local function readAuras(level)
   return active, activeAura, unknown
 end
 
-function PlayerState:Refresh()
+local function sameTable(a, b)
+  if a == b then return true end
+  if type(a) ~= "table" or type(b) ~= "table" then return false end
+  for k, v in pairs(a) do
+    if b[k] ~= v then return false end
+  end
+  for k in pairs(b) do
+    if a[k] == nil then return false end
+  end
+  return true
+end
+
+-- A stale refresh that changes nothing the engine reads keeps the old snapshot.
+local function unchanged(prev, s)
+  return prev and prev.stale and s.stale
+    and prev.class == s.class and prev.level == s.level and prev.spec == s.spec
+    and prev.specAuto == s.specAuto and prev.specName == s.specName
+    and sameTable(prev.active, s.active) and sameTable(prev.stats, s.stats)
+end
+
+-- Refresh(force): force fires FULLBUFF_STATE even when nothing changed (options).
+function PlayerState:Refresh(force)
   local prev = state
   local s = {
     class = select(2, UnitClass("player")) or "WARRIOR",
@@ -223,10 +247,11 @@ function PlayerState:Refresh()
     active = prev and prev.active or {},
     activeAura = prev and prev.activeAura or {},
     unknownAuras = prev and prev.unknownAuras or {},
-    ratios = prev and prev.ratios or { hpPerSta = HP_PER_STA, manaPerInt = MANA_PER_INT },
     stale = true,
   }
-  s.spec, s.specAuto = readSpec()
+  s.ratios = prev and prev.ratios
+    or { hpPerSta = HP_PER_STA, manaPerInt = MANA_PER_INT, rapPerAgi = RAP_PER_AGI[s.class] or 0 }
+  s.spec, s.specAuto, s.specName = readSpec()
 
   if ns.Compat.CanReadAuras() then
     local stats = readStats()
@@ -239,6 +264,7 @@ function PlayerState:Refresh()
     end
   end
 
+  if not force and unchanged(prev, s) then return prev end
   state = s
   ns.Events:Fire("FULLBUFF_STATE")
   return s

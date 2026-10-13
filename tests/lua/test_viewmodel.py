@@ -116,3 +116,14 @@ def test_value_text_format(addon):
     assert f("{HP=1.5}") == "+1.5 Health"
     assert f("{STR=1, AGI=2, STA=3, INT=4, SPI=5}") == "+1 Strength, +2 Agility, +3 Stamina, +4 Intellect, …"
     assert f("{}") == ""
+
+
+def test_spec_name_from_state_and_hint_when_not_auto(addon):
+    a, _ = build(addon)
+    vm = a.eval("""ns.ViewModel:Build({class='WARRIOR', spec=2, specName='Fury', specAuto=false, level=60,
+      active={}, stats={}, ratios={}}, {order={}})""")
+    assert vm["header"]["specName"] == "Fury"
+    assert vm["header"]["specHint"] == "Pick the specialization used to rank buffs."
+    vm = a.eval("ns.ViewModel:Build({class='WARRIOR', spec=2, specAuto=true, level=60, active={}, stats={},"
+                " ratios={}}, {order={}})")
+    assert vm["header"]["specName"] == "Specialization 2" and vm["header"]["specHint"] is None

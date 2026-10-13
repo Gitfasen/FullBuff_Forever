@@ -77,6 +77,7 @@ L.SRC_NPC = "NPC"
 L.SRC_OBJECT = "Object"
 L.SRC_CAMPING = "Camping"
 
+L.MORE_FMT = ", +%d more"
 L.SPEC_FMT = "Specialization %d"
 L.COL_STAT = "Stat"
 L.COL_NOW = "Now"

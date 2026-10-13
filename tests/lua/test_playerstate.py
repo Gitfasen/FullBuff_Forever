@@ -174,3 +174,33 @@ def test_refresh_fires_event_and_events_debounce(addon):
     a.flush_timers()
     assert a.eval("n") == 1
     assert a.errors() == []
+
+
+def test_stale_unchanged_refreshes_fire_state_event_at_most_once(addon):
+    a = make(addon)
+    a.run("__fired = 0; ns.Events:On('FULLBUFF_STATE', function() __fired = __fired + 1 end)")
+    a.run("ns.PlayerState:Refresh()")
+    assert a.eval("__fired") == 1
+    a.mock("InCombatLockdown", lambda: True)
+    a.run("ns.PlayerState:Refresh(); ns.PlayerState:Refresh(); ns.PlayerState:Refresh()")
+    assert a.eval("__fired") == 2  # the first stale snapshot only
+    a.mock("UnitLevel", lambda unit: 59)  # a real change still fires, even when stale
+    a.run("ns.PlayerState:Refresh()")
+    assert a.eval("__fired") == 3
+    a.run("ns.PlayerState:Refresh(true)")  # forced (option change)
+    assert a.eval("__fired") == 4
+
+
+def test_spec_name_from_talent_tree(addon):
+    a = make(addon, {"GetSpecializationInfo": lambda i: (0, ("Arcane", "Fire", "Frost")[i - 1], "", "", "DAMAGER",
+                                                         0, (5, 31, 10)[i - 1])})
+    s = a.eval("ns.PlayerState:Refresh()")
+    assert s["spec"] == 2 and s["specName"] == "Fire"
+    a.run("ns.CharDB = {specOverride = 3}")
+    assert a.eval("ns.PlayerState:Refresh().specName") == "Frost"
+
+
+def test_stale_default_ratios_include_rap_per_agi(addon):
+    a = make(addon, {"InCombatLockdown": lambda: True, "UnitClass": lambda unit: ("Hunter", "HUNTER", 3)})
+    s = a.eval("ns.PlayerState:Refresh()")
+    assert s["stale"] is True and s["ratios"]["rapPerAgi"] == 2

@@ -4,7 +4,7 @@ local _, ns = ...
 -- coordinates can be pinned on the world map and the minimap (ns.Pins).
 --
 -- ns.Detail:Model(buffId, state?) -> {
---   id, name, status, fxLines = {"+8 Strength", ...}, durText, minLevel, score,
+--   id, name, fxLines = {"+8 Strength", ...}, durText, minLevel, score,
 --   groupMembers = {names of the other buffs that share the stacking group},
 --   sources = { {text, loc?, pinnable, index} }  -- one "Source unknown" row when none
 -- }
@@ -78,14 +78,29 @@ local function minLevel(buff)
   return lvl
 end
 
+local MAX_MEMBERS = 6
+
+-- "A, B, C, D, E, F, +3 more": at most MAX_MEMBERS names, the rest counted.
+function Detail.MembersText(names)
+  local shown = {}
+  for i = 1, math.min(#names, MAX_MEMBERS) do shown[i] = names[i] end
+  local text = table.concat(shown, ", ")
+  if #names > MAX_MEMBERS then text = text .. string.format(ns.L.MORE_FMT, #names - MAX_MEMBERS) end
+  return text
+end
+
 function Detail:Model(buffId, state)
   local L = ns.L
   local buff = (ns.Buffs or {})[buffId] or {}
+  local shared = state == nil -- the current snapshot: reuse the view model's catalog
   state = state or ns.PlayerState:Get()
 
   -- Effects as the player's rank would give them: take them from the catalog entry.
-  local fx, status = buff.fx, nil
-  local ok, catalog = pcall(function() return ns.Catalog:Build(state) end)
+  local fx = buff.fx
+  local ok, catalog = pcall(function()
+    if shared then return ns.ViewModel:Get().catalog end
+    return ns.Catalog:Build(state)
+  end)
   if not ok then
     geterrorhandler()(catalog) -- report, then fall back to the buff's base effects
     catalog = nil
@@ -93,7 +108,7 @@ function Detail:Model(buffId, state)
   if catalog then
     for _, cat in ipairs(catalog.order or {}) do
       for _, e in ipairs(catalog[cat]) do
-        if e.id == buffId then fx, status = e.fx, e.status end
+        if e.id == buffId then fx = e.fx end
       end
     end
   end
@@ -138,7 +153,6 @@ function Detail:Model(buffId, state)
   return {
     id = buffId,
     name = buff.name or tostring(buffId),
-    status = status,
     fxLines = ns.ViewModel.FxEntries(fx),
     durText = durText(buff.dur),
     minLevel = minLevel(buff),
@@ -197,7 +211,7 @@ function Detail:Refresh()
   if m.minLevel and m.minLevel > 0 then info[#info + 1] = L.MIN_LEVEL .. ": " .. m.minLevel end
   info[#info + 1] = string.format("%s: %.1f", L.SCORE, m.score)
   if #m.groupMembers > 0 then
-    info[#info + 1] = L.NOT_STACK_WITH .. ": " .. table.concat(m.groupMembers, ", ")
+    info[#info + 1] = L.NOT_STACK_WITH .. ": " .. Detail.MembersText(m.groupMembers)
   else
     info[#info + 1] = L.STACKS_WITH_NONE
   end
