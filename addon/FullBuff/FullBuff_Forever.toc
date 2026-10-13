@@ -18,3 +18,4 @@ Data\Buffs.lua
 Data\Sources.lua
 Data\Weights.lua
 Engine\PlayerState.lua
+Engine\Catalog.lua
