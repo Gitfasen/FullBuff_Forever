@@ -1,13 +1,13 @@
-HereBeDragons-2.0 and HereBeDragons-Pins-2.0
-Author: Nevcairiel (https://github.com/Nevcairiel/HereBeDragons)
+HereBeDragons-2.0 and HereBeDragons-Pins-2.0 (MINOR 35 / 17)
+Author: Nevcairiel
+Source: https://github.com/Nevcairiel/HereBeDragons, tag 2.18-release,
+commit 90a7b2d8c065010dfb866e2b6bd56f5bc930029b
+(https://github.com/Nevcairiel/HereBeDragons/tree/2.18-release). Files are unmodified.
 
 License: BSD, as declared by the author in the upstream HereBeDragons.toc
 ("## X-License: BSD"). The upstream repository ships no separate LICENSE file
 and the source files carry no copyright header, so no further license text exists.
+BSD terms are GPL-3.0 compatible.
 
-These files are the copy bundled with the Questie addon (Questie/Libs/HereBeDragons),
-which Questie modified: the library names are "HereBeDragonsQuestie-2.0" and
-"HereBeDragonsQuestie-Pins-2.0", the pin template is renamed, and Classic/Forever
-map-data fixes were added. They are used here unmodified from that copy.
-
-BSD terms are GPL-3.0 compatible; this addon redistributes the source files as-is.
+Forever support: upstream detects WOW_PROJECT_ID == WOW_PROJECT_CAMELOT (WoWForever)
+and treats it like Classic for map data; the upstream TOC lists Interface 16001.

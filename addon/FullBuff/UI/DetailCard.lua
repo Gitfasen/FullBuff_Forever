@@ -86,7 +86,11 @@ function Detail:Model(buffId, state)
   -- Effects as the player's rank would give them: take them from the catalog entry.
   local fx, status = buff.fx, nil
   local ok, catalog = pcall(function() return ns.Catalog:Build(state) end)
-  if ok and catalog then
+  if not ok then
+    geterrorhandler()(catalog) -- report, then fall back to the buff's base effects
+    catalog = nil
+  end
+  if catalog then
     for _, cat in ipairs(catalog.order or {}) do
       for _, e in ipairs(catalog[cat]) do
         if e.id == buffId then fx, status = e.fx, e.status end
@@ -305,6 +309,8 @@ local function create()
 end
 
 function Detail:GetFrame() return frame end
+function Detail:GetButtons() return { pinAll = pinAll, clear = clearPins } end
+function Detail:GetRows() return rows end
 
 function ns.UI.OpenDetail(buffId)
   if not frame then create() end

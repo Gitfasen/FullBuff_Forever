@@ -14,7 +14,7 @@ ns.Pins = Pins
 
 local ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_7"
 local SIZE_WORLD, SIZE_MINI = 16, 12
-local LIB_NAMES = { "HereBeDragonsQuestie-Pins-2.0", "HereBeDragons-Pins-2.0" }
+local LIB_NAMES = { "HereBeDragons-Pins-2.0" }
 
 local drawn = {}      -- key -> { world = frame, minimap = frame }
 local pool = { world = {}, minimap = {} }

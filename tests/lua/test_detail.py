@@ -90,27 +90,50 @@ def test_score_present_and_localized_uk(addon):
     assert m["durText"] == "1 год 30 хв"
 
 
-def test_card_opens_refreshes_and_pins(addon):
+def test_non_vendor_rows_carry_location(addon):
+    a, m = model(addon, 1)
+    locs = [s["loc"] for s in m["sources"].values()]
+    assert locs[0] is None                    # vendor text already has it
+    assert locs[1] == "Zone1429 10.0, 20.0"   # drop with coordinates
+    assert locs[2:] == [None] * 6
+
+
+def test_card_buttons_drive_pins(addon):
     a = addon()
     a.load_addon()
     a.run(SETUP % 1)
     a.run("ns.UI.OpenDetail(1)")
     assert a.eval("FullBuffDetail:IsShown()") is True
-    # pin button of the first source toggles its pin; "pin all" / "clear" drive ns.Pins
     a.run("""
-      local pins = ns.Pins
       local card = ns.Detail:GetFrame()
-      local sources = ns.Sources[1]
-      pins:Add(1, 1)
-      __ns.__has1 = pins:Has('1:1')
-      pins:Remove('1:1')
-      __ns.__has2 = pins:Has('1:1')
+      local btns = ns.Detail:GetButtons()
+      local rows = ns.Detail:GetRows()
+      __ns.__pinnable = rows[1].pin:IsShown() and rows[3].pin:IsShown() == false
+      rows[1].pin:GetScript('OnClick')(rows[1].pin)
+      __ns.__p1 = ns.Pins:Has('1:1')
+      rows[1].pin:GetScript('OnClick')(rows[1].pin)
+      __ns.__p2 = ns.Pins:Has('1:1')
+      btns.pinAll:GetScript('OnClick')(btns.pinAll)
+      __ns.__all = #ns.Pins:List()
+      btns.clear:GetScript('OnClick')(btns.clear)
+      __ns.__none = #ns.Pins:List()
       ns.UI.OpenDetail(3)  -- reopening with another buff must not raise
     """)
-    assert a.eval("__ns.__has1") is True and a.eval("__ns.__has2") is False
+    assert a.eval("__ns.__pinnable") is True
+    assert a.eval("__ns.__p1") is True and a.eval("__ns.__p2") is False
+    assert a.eval("__ns.__all") == 2 and a.eval("__ns.__none") == 0
     assert a.errors() == []
     a.run("ns.SetLanguage('uk'); ns.Pins:AddAll(1)")
     assert a.errors() == []
+
+
+def test_catalog_error_is_reported_then_falls_back(addon):
+    a = addon()
+    a.load_addon()
+    a.run(SETUP % 1)
+    a.run("ns.Catalog.Build = function() error('boom') end; __ns.__m2 = ns.Detail:Model(1)")
+    assert a.eval("__ns.__m2.name") == "Strength"
+    assert any("boom" in e for e in a.errors())
 
 
 def test_card_in_special_frames_once(addon):

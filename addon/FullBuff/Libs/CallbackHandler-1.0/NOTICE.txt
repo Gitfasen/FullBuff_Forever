@@ -1,4 +1,4 @@
 CallbackHandler-1.0 is part of Ace3 (https://github.com/WoWUIDev/Ace3).
-Ace3 is licensed under the BSD-style license in LICENSE-Ace3.txt (same file as Questie/Libs/LICENSE.txt).
+Ace3 is licensed under the BSD-style license in LICENSE-Ace3.txt.
 Its "stand alone version" redistribution clause does not apply: this library is embedded in the
 FullBuff addon, not redistributed as a stand-alone Ace3 package.

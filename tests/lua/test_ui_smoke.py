@@ -155,3 +155,10 @@ def test_popover_rows(addon):
     # CAN_ADD first; both are the best in their (own) group, so both carry the raid-star marker
     assert names == [star + " Bravo", star + " Alpha"]
     assert subs[0] == "+20 Strength, +2% Critical strike"
+
+
+def test_libs_do_not_reference_questie():
+    from harness import ADDON_DIR
+    hits = [str(f.relative_to(ADDON_DIR)) for f in (ADDON_DIR / "Libs").rglob("*")
+            if f.is_file() and "questie" in f.read_text(encoding="utf-8", errors="ignore").lower()]
+    assert hits == []

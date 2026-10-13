@@ -221,7 +221,7 @@ local hbdPins = {
 }
 LibStub = setmetatable({}, {
   __call = function(_, name, silent)
-    if __hbd.available and (name == "HereBeDragonsQuestie-Pins-2.0" or name == "HereBeDragons-Pins-2.0") then
+    if __hbd.available and name == "HereBeDragons-Pins-2.0" then
       return hbdPins
     end
     if silent then return nil end
