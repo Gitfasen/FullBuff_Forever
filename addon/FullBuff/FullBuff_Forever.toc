@@ -23,6 +23,7 @@ Data\Buffs.lua
 Data\Sources.lua
 Data\Weights.lua
 Data\Slots.lua
+Engine\Bags.lua
 Engine\PlayerState.lua
 Engine\Catalog.lua
 Engine\Scoring.lua
