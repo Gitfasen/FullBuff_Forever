@@ -12,8 +12,12 @@ Events.frame = frame
 function Events:Fire(event, ...)
   local list = self.handlers[event]
   if not list then return end
+  -- Each handler is isolated: an error is reported and the next one still runs.
   for i = 1, #list do
-    list[i](...)
+    local ok, err = pcall(list[i], ...)
+    if not ok then
+      geterrorhandler()(err)
+    end
   end
 end
 

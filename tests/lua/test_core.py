@@ -77,17 +77,15 @@ def test_ukrainian_and_english_have_same_keys(addon):
     expected = (PLAIN + ["CATEGORY_" + c for c in CATEGORIES] + ["STAT_" + s for s in STATS]
                 + ["SRC_" + k.upper() for k in KINDS])
     assert set(expected) <= set(en)
-    # Ukrainian values really are Cyrillic (except the brand title)
-    for key in expected:
-        if key == "TITLE":
-            continue
-        val = a.eval("ns.Locales.ukUA['%s']" % key)
-        assert val, key
 
 
 def test_ukrainian_strings_are_cyrillic(addon):
     a = addon()
-    for key in ["PIN", "WHERE_TO_GET", "CATEGORY_FLASK", "STATUS_ACTIVE", "OPT_LANGUAGE"]:
+    keys = list(a.eval("(function() local t = {} for k in pairs(ns.Locales.ukUA) do t[#t+1] = k end return t end)()").values())
+    assert len(keys) > 50
+    for key in keys:
+        if key == "TITLE":
+            continue
         val = a.eval("ns.Locales.ukUA['%s']" % key)
         assert any("Ѐ" <= ch <= "ӿ" for ch in val), key
 
@@ -129,3 +127,78 @@ def test_toc_header_and_files():
     files = toc_files()
     assert files.index("Core/Init.lua") < files.index("Core/Locale.lua") < files.index("Core/Compat.lua")
     assert files.index("Core/SavedVars.lua") < files.index("Data/Buffs.lua")
+
+
+def test_debounce_respects_virtual_clock(addon):
+    a = addon()
+    a.run("fired = false; ns.Events:Debounce('k', 0.3, function() fired = true end)")
+    a.advance(0.2)
+    assert a.eval("fired") is False
+    a.advance(0.1)
+    assert a.eval("fired") is True
+    assert a.eval("GetTime()") == pytest.approx(0.3)
+
+
+def test_equal_delay_timers_are_fifo(addon):
+    a = addon()
+    a.run("order = {}; for i = 1, 5 do C_Timer.After(1, function() order[#order+1] = i end) end"
+          "; C_Timer.After(0.5, function() order[#order+1] = 0 end)")
+    a.flush_timers()
+    assert list(a.eval("order").values()) == [0, 1, 2, 3, 4, 5]
+
+
+def test_timers_queued_in_callbacks_run_within_window(addon):
+    a = addon()
+    a.run("hits = 0; C_Timer.After(1, function() hits = hits + 1; "
+          "C_Timer.After(1, function() hits = hits + 1 end) end)")
+    a.advance(1.5)
+    assert a.eval("hits") == 1
+    a.advance(0.5)
+    assert a.eval("hits") == 2
+
+
+def test_throwing_timer_does_not_drop_others(addon):
+    a = addon()
+    a.run("ran = 0; C_Timer.After(1, function() error('boom') end); "
+          "C_Timer.After(2, function() ran = ran + 1 end)")
+    with pytest.raises(Exception, match="boom"):
+        a.flush_timers()
+    assert a.eval("ran") == 1
+
+
+def test_handler_error_is_isolated(addon):
+    a = addon()
+    a.run("ns.Events:On('FULLBUFF_T', function() error('bad') end)"
+          "; ns.Events:On('FULLBUFF_T', function() ok = true end)"
+          "; ns.Events:On('PLAYER_LOGIN', function() error('bad2') end)"
+          "; ns.Events:On('PLAYER_LOGIN', function() ok2 = true end)")
+    a.run("ns.Events:Fire('FULLBUFF_T')")
+    a.fire_event("PLAYER_LOGIN")
+    assert a.eval("ok") is True and a.eval("ok2") is True
+    errs = a.errors()
+    assert len(errs) == 2 and "bad" in errs[0] and "bad2" in errs[1]
+
+
+def test_dotted_and_nested_mocks(addon):
+    a = addon(mocks={
+        "C_UnitAuras.GetAuraDataByIndex":
+            lambda unit, i, f: {"spellId": 1, "points": [5]} if i == 1 else None,
+        "C_Timer.After": lambda s, fn: None,
+        "Brand.New.Thing": 7,
+    })
+    assert a.eval("C_UnitAuras.GetAuraDataByIndex('player', 1, 'HELPFUL').spellId") == 1
+    assert a.eval("C_UnitAuras.GetAuraDataByIndex('player', 1, 'HELPFUL').points[1]") == 5
+    assert a.eval("C_UnitAuras.GetAuraDataByIndex('player', 2, 'HELPFUL')") is None
+    assert a.eval("type(C_UnitAuras)") == "table"
+    assert a.eval("Brand.New.Thing") == 7
+
+
+def test_ns_is_not_a_global(addon):
+    a = addon()
+    assert a.eval("rawget(_G, 'ns')") is None
+    assert a.eval("ns.name") == "FullBuff"
+
+
+def test_is_forever_flag(addon):
+    assert addon().eval("ns.IsForever") is True
+    assert addon(mocks={"WOW_PROJECT_ID": 1}).eval("ns.IsForever") is False

@@ -36,28 +36,71 @@ function __fire_event(event, ...)
   end
 end
 
--- Timers: queued until __flush_timers()
-local timers = {}
+-- Timers on a virtual clock. Ordered by (due, seq) so equal delays are FIFO.
+-- __advance(sec) runs due timers, including ones queued by callbacks that fall
+-- inside the window. A throwing callback does not stop the others: the rest
+-- run, then the first error is re-raised.
+local now, seq, timers = 0, 0, {}
 C_Timer = {
-  After = function(seconds, fn) timers[#timers + 1] = { seconds = seconds, fn = fn } end,
+  After = function(seconds, fn)
+    seq = seq + 1
+    timers[#timers + 1] = { due = now + (seconds or 0), seq = seq, fn = fn }
+  end,
 }
+local function next_timer(limit)
+  local best, bi
+  for i, t in ipairs(timers) do
+    if (limit == nil or t.due <= limit) and
+       (not best or t.due < best.due or (t.due == best.due and t.seq < best.seq)) then
+      best, bi = t, i
+    end
+  end
+  return best, bi
+end
+local function run_until(limit, errs)
+  local count = 0
+  while true do
+    local t, i = next_timer(limit)
+    if not t then break end
+    count = count + 1
+    if count > 10000 then error("timers: runaway") end
+    table.remove(timers, i)
+    if t.due > now then now = t.due end
+    local ok, err = pcall(t.fn)
+    if not ok then errs[#errs + 1] = err end
+  end
+end
+function __advance(seconds)
+  local errs = {}
+  local target = now + seconds
+  run_until(target, errs)
+  if target > now then now = target end
+  if #errs > 0 then error(errs[1], 0) end
+end
 function __flush_timers()
-  local guard = 0
+  local errs, guard = {}, 0
   while #timers > 0 do
     guard = guard + 1
     if guard > 1000 then error("__flush_timers: runaway timers") end
-    local batch = timers
-    timers = {}
-    table.sort(batch, function(a, b) return a.seconds < b.seconds end)
-    for _, t in ipairs(batch) do t.fn() end
+    local t = next_timer()
+    run_until(t.due, errs)
   end
+  if #errs > 0 then error(errs[1], 0) end
 end
 function __pending_timers() return #timers end
+GetTime = function() return now end
+
+-- Error handler capture: geterrorhandler()(msg) records into __errors
+__errors = {}
+local handler = function(msg) __errors[#__errors + 1] = tostring(msg) end
+geterrorhandler = function() return handler end
+seterrorhandler = function(fn) handler = fn end
+
+WOW_PROJECT_ID = 18
 
 -- State queries
 InCombatLockdown = function() return false end
 issecretvalue = function(v) return false end
-GetTime = function() return 0 end
 
 -- Player
 UnitClass = function(unit) return "Warrior", "WARRIOR", 1 end
