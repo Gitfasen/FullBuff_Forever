@@ -141,6 +141,8 @@ def test_real_data_slots_match_buffs():
 
 def test_real_data_curated_slot_names():
     text = SLOTS_LUA.read_text(encoding="utf-8")
-    for sid, en in (("HUNTER_ASPECT", "Hunter aspect"), ("SCROLL_FAMILIAR", "Scroll familiar"),
-                    ("DMF_FORTUNE", "Darkmoon Faire fortune"), ("CAPITAL_BLESSING", "Capital city blessing")):
-        assert 'name={en="%s"' % en in text and '["%s"]' % sid in text
+    for sid, en, uk in (("HUNTER_ASPECT", "Hunter aspect", "Аспект мисливця"),
+                        ("SCROLL_FAMILIAR", "Scroll familiar", "Фамільяр зі сувою"),
+                        ("DMF_FORTUNE", "Darkmoon Faire fortune", "Удача ярмарку Темного Місяця"),
+                        ("CAPITAL_BLESSING", "Capital city blessing", "Благословення столиці")):
+        assert '["%s"] = {name={en="%s", uk="%s"}' % (sid, en, uk) in text

@@ -112,7 +112,7 @@ def test_burst_model_marks_unavailable_tracked(addon):
     panel(a)
     lbl = a.eval("ns.Options.burstChecks and (function() for _, c in ipairs(ns.Options.burstChecks) do "
                  "if c:IsShown() and c.fbBuff == 32 then return c.fbLabel:GetText() end end end)()")
-    assert "Unavailable" in lbl or "unavailable" in lbl.lower()
+    assert lbl == "Burst gated  (Unavailable)"
 
 
 def test_option_text_uses_marks(addon):
@@ -142,7 +142,6 @@ def test_rename_box_fits_scroll_child(addon):
 def test_state_event_refreshes_open_panel(addon):
     a = boot(addon)
     panel(a)
-    slots = lambda: {s["slot"] for s in a.eval("ns.Options:SlotModel(1)").values()}
     assert a.eval("(function() for _, r in ipairs(ns.Options.radios) do if r:IsShown() and "
                   "r.fbSlot == 'slotC' then return true end end return false end)()") is False
     a.run("local g = ns.Catalog.Build; ns.Catalog.Build = function(...) local c = g(...); "

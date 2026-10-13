@@ -3,9 +3,7 @@ local L = ns.Locales.enUS
 
 L.TITLE = "FullBuff"
 
-L.STATUS_ACTIVE = "Active"
 L.STATUS_UNAVAILABLE = "Unavailable"
-L.RECOMMENDED = "Recommended"
 L.STALE_AFTER_COMBAT = "Data may be outdated until combat ends"
 L.SOURCE_UNKNOWN = "Source unknown"
 L.PIN = "Pin"

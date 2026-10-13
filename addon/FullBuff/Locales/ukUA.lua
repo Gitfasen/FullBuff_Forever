@@ -3,9 +3,7 @@ local L = ns.Locales.ukUA
 
 L.TITLE = "FullBuff"
 
-L.STATUS_ACTIVE = "Діє"
 L.STATUS_UNAVAILABLE = "Недоступно"
-L.RECOMMENDED = "Рекомендовано"
 L.STALE_AFTER_COMBAT = "Дані можуть бути застарілими до кінця бою"
 L.SOURCE_UNKNOWN = "Джерело невідоме"
 L.PIN = "Закріпити"

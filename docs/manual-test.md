@@ -15,8 +15,8 @@ Install: `powershell -ExecutionPolicy Bypass -File tools/install_junction.ps1` (
 - [ ] `WOW_PROJECT_CAMELOT` is defined (`/dump WOW_PROJECT_CAMELOT`) and the addon takes the Forever code path (pending user verification)
 - [ ] The libraries load without `LibStub`/`HereBeDragonsQuestie` errors, also when Questie is enabled (pending user verification)
 - [ ] The Settings panel opens from both the launcher right-click and the addon compartment entry (pending user verification)
-- [ ] The raid-star marker texture renders (pending user verification)
-- [ ] Buffs already on the character show a green ready-check tick and green name, listed at the top of their category; recommended ones (star) follow, then the rest (pending user verification)
+- [ ] The raid-star marker texture renders in the options Sets editor (pending user verification)
+- [ ] Buffs already on the character show a green tick and green name and are listed first; the popover lists only the active set. The raid star marks the recommended option in the options editor (pending user verification)
 - [ ] Ukrainian text renders with no missing glyphs (boxes or question marks) (pending user verification)
 
 ## 3. Launcher and popover
@@ -26,7 +26,6 @@ Install: `powershell -ExecutionPolicy Bypass -File tools/install_junction.ps1` (
 - [ ] Left click opens and closes the popover, on the side of the launcher with more screen space (pending user verification)
 - [ ] Escape closes the popover (pending user verification)
 - [ ] Dragging the launcher is refused during combat (pending user verification)
-- [ ] Section headers collapse/expand and the state survives `/reload`; "Show only missing" filters rows (pending user verification)
 - [ ] Hovering the launcher shows progress and the missing buffs list (pending user verification)
 
 ## 4. Detail card and map pins
@@ -42,10 +41,10 @@ Install: `powershell -ExecutionPolicy Bypass -File tools/install_junction.ps1` (
 
 - [ ] The specialization override changes recommended buffs and the header spec; "Automatic" restores the detected spec (pending user verification)
 - [ ] Editing a stat weight (Enter) changes the ranking; clearing the box restores the default (pending user verification)
-- [ ] Unchecking a category hides its popover section; the launcher badge is unchanged (pending user verification)
+- [ ] Changing a pick in the editor updates the popover list and the set maximum (pending user verification)
 - [ ] "Show all stats" adds extra stat rows; the icon scale slider resizes the launcher between 0.5 and 2.0; "Reset position" re-anchors it (pending user verification)
 - [ ] "Українська" (panel or `/fullbuff lang uk`) turns the whole UI, the card and pin tooltips Ukrainian at once with no overflow; "English" reverts; it survives `/reload` (pending user verification)
-- [ ] `/fullbuff` toggles the popover, `/fullbuff options` opens settings, `/fullbuff reset` resets position and collapsed sections, `/fullbuff debug` lists unknown auras and stale state, an unknown subcommand prints usage (pending user verification)
+- [ ] `/fullbuff` toggles the popover, `/fullbuff options` opens settings, `/fullbuff reset` resets the launcher position, `/fullbuff debug` lists unknown auras and stale state, an unknown subcommand prints usage (pending user verification)
 - [ ] The settings panel has no overlap or overflow in both languages (pending user verification)
 
 ## 6. Combat, instances and stale behaviour
@@ -91,7 +90,7 @@ Runtime ratios (verify per class):
 - [ ] The set button in the popover header cycles through the sets (pending user verification)
 - [ ] In the editor the recommended option shows the raid star and the active one the green tick; picking an option changes the popover and the set maximum (pending user verification)
 - [ ] Bag counts of tracked potions and trinkets update after using a potion (pending user verification)
-- [ ] An elixir or flask in the bags shows "in bags xN" in its row (pending user verification)
+- [ ] An elixir or flask in the bags shows "in bags ×N" in its row (pending user verification)
 - [ ] A level-gated pick in a set shows the unavailable marker in the popover and greyed in the editor; a tracked burst item that is no longer obtainable is greyed with the unavailable label (pending user verification)
 - [ ] With an empty set the popover button opens the options (pending user verification)
 - [ ] With the options open, levelling up or changing buffs refreshes the slot list without reopening (pending user verification)
