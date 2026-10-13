@@ -109,3 +109,7 @@ L.DEBUG_NO = "no"
 L.DEBUG_UNKNOWN_HEADER = "Unknown auras: %d"
 L.DEBUG_NONE = "No unknown auras."
 L.SETTINGS_UNAVAILABLE = "The settings panel is not available in this client."
+
+L.SET_DEFAULT_NAME = "Main"
+-- Appended to a copied set name; not " (2)" so the ukUA twin can contain Cyrillic.
+L.SET_COPY_SUFFIX = " (copy)"

@@ -109,3 +109,6 @@ L.DEBUG_NO = "ні"
 L.DEBUG_UNKNOWN_HEADER = "Невідомі аури: %d"
 L.DEBUG_NONE = "Невідомих аур немає."
 L.SETTINGS_UNAVAILABLE = "Панель налаштувань недоступна в цьому клієнті."
+
+L.SET_DEFAULT_NAME = "Основний"
+L.SET_COPY_SUFFIX = " (копія)"
