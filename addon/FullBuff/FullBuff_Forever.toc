@@ -33,3 +33,5 @@ UI\ViewModel.lua
 UI\Launcher.lua
 UI\Popover.lua
 UI\DetailCard.lua
+UI\Options.lua
+Core\Slash.lua

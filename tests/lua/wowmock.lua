@@ -228,3 +228,22 @@ LibStub = setmetatable({}, {
     error("Cannot find a library instance of " .. tostring(name))
   end,
 })
+
+-- Chat frame and slash commands: AddMessage records into __messages.
+DEFAULT_CHAT_FRAME = { __messages = {} }
+function DEFAULT_CHAT_FRAME:AddMessage(msg) self.__messages[#self.__messages + 1] = tostring(msg) end
+SlashCmdList = {}
+
+-- Settings panel API: categories are recorded in __settings.
+__settings = { categories = {}, opened = {} }
+Settings = {
+  RegisterCanvasLayoutCategory = function(frame, name)
+    local id = #__settings.categories + 1
+    local cat = { frame = frame, name = name, id = id }
+    function cat:GetID() return self.id end
+    __settings.categories[id] = cat
+    return cat
+  end,
+  RegisterAddOnCategory = function(cat) cat.registered = true end,
+  OpenToCategory = function(id) __settings.opened[#__settings.opened + 1] = id end,
+}

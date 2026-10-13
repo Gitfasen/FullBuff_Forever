@@ -29,3 +29,14 @@ Install first: `powershell -ExecutionPolicy Bypass -File tools/install_junction.
 - [ ] Hovering a pin shows the buff name, the source text and the right-click hint (pending user verification)
 - [ ] The card and pin tooltips are fully Ukrainian after switching the language, with no layout overflow (pending user verification)
 - [ ] The libraries load without Lua errors on Forever (no `LibStub`/`HereBeDragonsQuestie` errors) and the pins still work when Questie is also enabled (pending user verification)
+
+## 4. Options, slash commands and language (Task 15)
+
+- [ ] Right-clicking the launcher and clicking the addon compartment entry both open the FullBuff settings panel (pending user verification)
+- [ ] Changing the specialization override changes the recommended buffs and the header spec; "Automatic" restores the detected spec (pending user verification)
+- [ ] Editing a stat weight (Enter) changes the ranking; clearing the box restores the default (pending user verification)
+- [ ] Unchecking a category hides its section in the popover; the launcher badge is unchanged (pending user verification)
+- [ ] "Show all stats" adds the extra stat rows; the icon scale slider resizes the launcher between 0.5 and 2.0; "Reset position" re-anchors it (pending user verification)
+- [ ] Choosing "Українська" (panel or `/fullbuff lang uk`) turns the whole UI Ukrainian at once, and "English" turns it back; it survives `/reload` (pending user verification)
+- [ ] `/fullbuff` toggles the popover, `/fullbuff reset` resets the position and collapsed sections, `/fullbuff debug` lists unknown auras and the stale state, an unknown subcommand prints usage (pending user verification)
+- [ ] The settings panel layout has no overlap or overflow in both languages (pending user verification)

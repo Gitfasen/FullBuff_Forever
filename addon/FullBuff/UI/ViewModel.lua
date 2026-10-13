@@ -12,6 +12,8 @@ local _, ns = ...
 -- }
 -- Section items are ordered CAN_ADD (recommended first), UNAVAILABLE, ACTIVE.
 -- activeCount/total ignore the "only missing" filter; total excludes UNAVAILABLE.
+-- Sections of categories with ns.DB.hiddenCats[cat] == true are omitted from `sections`
+-- only; MaxCalc, the badge and the tooltip still count them (hiding is display-only).
 -- With ns.DB.onlyMissing only CAN_ADD items are listed and empty sections are dropped.
 --
 -- valueText format (FormatFx): "+25 Agility, +2% Critical strike". Entries follow the
@@ -121,6 +123,7 @@ function VM:Build(state, catalog)
 
   local sections = {}
   for _, cat in ipairs(catalog.order or {}) do
+   if not (DB.hiddenCats and DB.hiddenCats[cat]) then
     local entries = catalog[cat] or {}
     local sec = { cat = cat, title = L["CATEGORY_" .. cat], activeCount = 0, total = 0,
                   collapsed = (DB.collapsed and DB.collapsed[cat]) and true or false, items = {} }
@@ -136,6 +139,7 @@ function VM:Build(state, catalog)
     end
     sortItems(sec.items)
     if #sec.items > 0 then sections[#sections + 1] = sec end
+   end
   end
 
   local names = {}
