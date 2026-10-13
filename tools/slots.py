@@ -20,7 +20,7 @@ STAT_NAMES = {
 }
 assert set(STAT_NAMES) == set(STAT_KEYS)
 
-FIXED = {"FLASK": ("Flask", "Фласка"), "WEAPON": ("Weapon", "Зброя"), "FOOD:Well Fed": ("Food", "Їжа")}
+FIXED = {"FLASK": ("Flask", "Фляга"), "WEAPON": ("Weapon", "Зброя"), "FOOD:Well Fed": ("Food", "Їжа")}
 PREFIX = {"ELIXIR": ("Elixir", "Еліксир"), "SCROLL": ("Scroll", "Сувій")}
 
 

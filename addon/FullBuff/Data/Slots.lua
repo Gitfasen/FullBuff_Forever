@@ -21,7 +21,7 @@ ns.Slots = {
   ["ELIXIR:STA"] = {name={en="Elixir — Stamina", uk="Еліксир — Витривалість"}, order=34},
   ["ELIXIR:STR"] = {name={en="Elixir — Strength", uk="Еліксир — Сила"}, order=35},
   ["ELIXIR:Spirit of Zanza"] = {name={en="Permanent Spirit of Zanza", uk="Permanent Spirit of Zanza"}, order=36},
-  ["FLASK"] = {name={en="Flask", uk="Фласка"}, order=24},
+  ["FLASK"] = {name={en="Flask", uk="Фляга"}, order=24},
   ["FOOD:Rumsey Rum Black Label"] = {name={en="Rumsey Rum Black Label", uk="Rumsey Rum Black Label"}, order=38},
   ["FOOD:Well Fed"] = {name={en="Food", uk="Їжа"}, order=37},
   ["HUNTER_ASPECT"] = {name={en="Hunter aspect", uk="Аспект мисливця"}, order=6},

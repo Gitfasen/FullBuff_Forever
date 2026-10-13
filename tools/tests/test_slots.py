@@ -54,7 +54,7 @@ def test_auto_names_en_uk():
     slots, _ = apply_slots(buffs, {})
     assert slots["ELIXIR:AGI"]["name"] == {"en": "Elixir — Agility", "uk": "Еліксир — Спритність"}
     assert slots["SCROLL:AGI"]["name"] == {"en": "Scroll — Agility", "uk": "Сувій — Спритність"}
-    assert slots["FLASK"]["name"] == {"en": "Flask", "uk": "Фласка"}
+    assert slots["FLASK"]["name"] == {"en": "Flask", "uk": "Фляга"}
     assert slots["WEAPON"]["name"] == {"en": "Weapon", "uk": "Зброя"}
     assert slots["FOOD:Well Fed"]["name"] == {"en": "Food", "uk": "Їжа"}
     assert slots["CLASS:Demon Armor"]["name"] == {"en": "Demon Armor", "uk": "Demon Armor"}
