@@ -112,3 +112,10 @@ L.SETTINGS_UNAVAILABLE = "Панель налаштувань недоступн
 
 L.SET_DEFAULT_NAME = "Основний"
 L.SET_COPY_SUFFIX = " (копія)"
+
+L.IN_BAGS = "у сумках ×%d"
+L.SET_UNAVAILABLE = "недоступний — оберіть заміну в налаштуваннях"
+L.BURST_TITLE = "Зілля та дрібнички"
+L.SET_EMPTY = "Набір порожній — налаштуйте його в налаштуваннях"
+L.SET_LABEL = "Набір"
+L.SET_OPEN_SETTINGS = "Відкрити налаштування"

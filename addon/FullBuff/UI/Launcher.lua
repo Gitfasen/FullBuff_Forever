@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- Round launcher button: badge = number of recommended missing buffs.
+-- Round launcher button: badge = missing buffs of the active set.
 ns.UI = ns.UI or {}
 ns.UI.OpenDetail = ns.UI.OpenDetail or function() end -- placeholder, Task 14 replaces it
 
@@ -44,6 +44,7 @@ local function showTooltip(self)
   local L = ns.L
   GameTooltip:SetOwner(self, "ANCHOR_LEFT")
   GameTooltip:AddLine(L.TITLE)
+  GameTooltip:AddLine(string.format("%s: %s", L.SET_LABEL, vm.tooltip.setName or ""), 0.7, 0.7, 0.7)
   GameTooltip:AddDoubleLine(L.TOOLTIP_PROGRESS, string.format("%d%%", math.floor(vm.tooltip.progress + 0.5)), 1, 1, 1, 1, 1, 1)
   if #vm.tooltip.missing > 0 then
     GameTooltip:AddLine(string.format("%s: %d", L.TOOLTIP_MISSING, #vm.tooltip.missing), 1, 0.82, 0)
@@ -122,3 +123,5 @@ end
 ns.Events:On("FULLBUFF_LOADED", function() Launcher:Create() end)
 ns.Events:On("FULLBUFF_STATE", function() Launcher:Refresh() end)
 ns.Events:On("FULLBUFF_LANGUAGE", function() Launcher:Refresh() end)
+ns.Events:On("FULLBUFF_SET", function() Launcher:Refresh() end)
+ns.Events:On("FULLBUFF_BAGS", function() Launcher:Refresh() end)

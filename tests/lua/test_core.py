@@ -102,6 +102,7 @@ def test_savedvars_defaults_applied(addon):
     assert a.eval("ns.DB.lang") == "en"
     assert a.eval("ns.DB.scale") == 1
     assert a.eval("ns.DB.showAllStats") is False and a.eval("ns.DB.allStats") is None
+    assert a.eval("ns.DB.onlyMissing") is None and a.eval("ns.DB.hiddenCats") is None
     assert a.eval("type(ns.CharDB.pins)") == "table"
     assert a.eval("ns.DB == FullBuffDB and ns.CharDB == FullBuffCharDB")
 
@@ -110,7 +111,7 @@ def test_savedvars_keep_existing_and_fill_missing(addon):
     a = addon(mocks={"FullBuffDB": "{ lang = 'uk', scale = 1.5 }", "FullBuffCharDB": "{}"})
     a.load_addon()
     assert a.eval("ns.DB.scale") == 1.5
-    assert a.eval("ns.DB.onlyMissing") is False
+    assert a.eval("ns.DB.onlyMissing") is None and a.eval("ns.DB.hiddenCats") is None
     assert a.eval("ns.L.PIN") == a.eval("ns.Locales.ukUA.PIN")
 
 

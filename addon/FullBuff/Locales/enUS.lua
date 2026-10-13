@@ -113,3 +113,10 @@ L.SETTINGS_UNAVAILABLE = "The settings panel is not available in this client."
 L.SET_DEFAULT_NAME = "Main"
 -- Appended to a copied set name; not " (2)" so the ukUA twin can contain Cyrillic.
 L.SET_COPY_SUFFIX = " (copy)"
+
+L.IN_BAGS = "in bags ×%d"
+L.SET_UNAVAILABLE = "unavailable — pick a replacement in settings"
+L.BURST_TITLE = "Potions & trinkets"
+L.SET_EMPTY = "Set is empty — configure it in settings"
+L.SET_LABEL = "Set"
+L.SET_OPEN_SETTINGS = "Open settings"

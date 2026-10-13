@@ -56,16 +56,43 @@ FIXTURE = """
 ns.Weights = {WARRIOR = {{AP=1}}}
 local st = {class="WARRIOR", spec=1, level=60, stale=false, active={[1]=true},
   stats={STR=110, AP=220}, unknownAuras={}, ratios={apPerStr=2, hpPerSta=10, manaPerInt=15}}
-local function E(id, cat, name, fx, status)
-  return {id=id, cat=cat, name=name, fx=fx, status=status}
+local function E(id, cat, name, excl, fx, status, burst)
+  return {id=id, cat=cat, name=name, excl=excl, fx=fx, status=status, burst=burst}
 end
-local cat = {order={"CLASS"}, CLASS={
-  E(1, "CLASS", "Alpha", {STR=10}, "ACTIVE"),
-  E(2, "CLASS", "Bravo", {STR=20, CRIT=2}, "CAN_ADD"),
-}}
+local cat = {order={"CLASS", "POTION"},
+  CLASS={
+    E(1, "CLASS", "Alpha", "s1", {STR=10}, "ACTIVE"),
+    E(2, "CLASS", "Bravo", "s2", {STR=20, CRIT=2}, "CAN_ADD"),
+  },
+  POTION={E(6, "POTION", "Rage", nil, {AP=100}, "CAN_ADD", true)}}
 ns.PlayerState.Get = function() return st end
 ns.Catalog.Build = function() return cat end
+ns.Buffs = {[1]={name="Alpha"}, [2]={name="Bravo", bags=2}, [3]={name="Gone"}, [6]={name="Rage", bags=0}}
+ns.Slots = {s1={order=1}, s2={order=2}}
+ns.Bags.CountBuff = function(_, b) return b.bags or 0 end
+ns.CharDB.sets = {
+  [1] = {name="Main", picks={s1=1, s2=2}, burst={6}},
+  [2] = {name="Empty", picks={s1=false}, burst={}},
+}
+ns.CharDB.activeSet = 1
+ns.ViewModel:Invalidate()
 """
+
+CHECK = "|TInterface" + chr(92) + "RaidFrame" + chr(92) + "ReadyCheck-Ready:0|t"
+
+
+def popover_lines(a):
+    a.run("""
+      local lines, used = ns.UI.Popover:GetLines()
+      local out = {}
+      for i = 1, used do
+        local b = lines[i]
+        out[#out + 1] = {kind = b.fbKind, id = b.fbId, name = b.name:GetText(), sub = b.sub:GetText(),
+                         c2 = b.c2:GetText()}
+      end
+      __ns.__lines = out
+    """)
+    return list(a.eval("__ns.__lines").values())
 
 
 BS = chr(92)  # a single backslash
@@ -106,8 +133,8 @@ def test_launcher_texture_and_tooltip(addon):
     lines = list(a.eval("GameTooltip.__lines").values())
     assert lines[0] == "FullBuff"
     assert any(l.startswith("Current / maximum | ") and l.endswith("%") for l in lines)
-    assert "Missing buffs: 1" in lines
-    assert "Bravo" in lines
+    assert "Missing buffs: 2" in lines  # Bravo + burst Rage (no bags)
+    assert "Bravo" in lines and "Rage" in lines
 
 
 def test_launcher_icon_path_exact(addon):
@@ -132,31 +159,104 @@ def test_launcher_icon_path_exact(addon):
     assert "Interface\\Icons\\Spell_Holy_WordFortitude" in paths
 
 
-def test_popover_rows(addon):
+def test_popover_set_rows_marks(addon):
     a = addon()
     a.load_addon()
     a.run(FIXTURE)
     a.run("ns.UI.Popover:Toggle()")
+    lines = popover_lines(a)
+    items = [l for l in lines if l["kind"] == "item"]
+    # ACTIVE first with a check mark, then MISSING with its bag count; no stars
+    assert [l["name"] for l in items] == [CHECK + " Alpha", "Bravo"]
+    assert items[0]["sub"] == "+10 Strength"
+    assert items[1]["sub"] == "+20 Strength, +2% Critical strike  in bags ×2"
+    burst = [l for l in lines if l["kind"] == "burst"]
+    assert [(l["name"], l["c2"]) for l in burst] == [("Rage", "|cffff2020×0|r")]
+    assert any(l["name"] == "Potions & trinkets" for l in lines)
+    assert a.errors() == []
+
+
+def test_popover_burst_with_bags_is_plain(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.Buffs[6].bags = 3; ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()")
+    burst = [l for l in popover_lines(a) if l["kind"] == "burst"]
+    assert burst[0]["c2"] == "×3"
+
+
+def test_popover_unavailable_row(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.CharDB.sets[1].picks.zz = 3; ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()")
+    items = [l for l in popover_lines(a) if l["kind"] == "item"]
+    last = items[-1]
+    assert last["name"] == "Gone" and last["id"] is None
+    assert last["sub"] == "unavailable — pick a replacement in settings"
+
+
+def test_popover_empty_set_button_opens_options(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.CharDB.activeSet = 2; ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()")
+    lines = popover_lines(a)
+    assert any(l["kind"] == "empty" and l["name"] == "Set is empty — configure it in settings"
+               for l in lines)
+    assert not [l for l in lines if l["kind"] in ("item", "burst")]
     a.run("""
+      __ns.__opened = 0
+      ns.UI.OpenOptions = function() __ns.__opened = __ns.__opened + 1 end
       local lines, used = ns.UI.Popover:GetLines()
-      local names, subs = {}, {}
       for i = 1, used do
-        local b = lines[i]
-        if b.fbKind == "item" then
-          names[#names + 1] = b.name:GetText()
-          subs[#subs + 1] = b.sub:GetText()
-        end
+        if lines[i].fbKind == "options" then lines[i]:GetScript("OnClick")(lines[i]) end
       end
-      __ns.__names, __ns.__subs = names, subs
     """)
-    names = list(a.eval("__ns.__names").values())
-    subs = list(a.eval("__ns.__subs").values())
-    star = "|TInterface" + BS + "TargetingFrame" + BS + "UI-RaidTargetingIcon_1:0|t"
-    check = "|TInterface" + BS + "RaidFrame" + BS + "ReadyCheck-Ready:0|t"
-    # ACTIVE first with a check mark (no star even though it is best in its group),
-    # then the recommended CAN_ADD with the star
-    assert names == [check + " Alpha", star + " Bravo"]
-    assert subs[1] == "+20 Strength, +2% Critical strike"
+    assert a.eval("__ns.__opened") == 1
+
+
+def test_set_dropdown_switches_active(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.UI.Popover:Toggle()")
+    btn = "ns.UI.Popover:GetSetButton()"
+    assert a.eval(btn + ":GetText()") == "Set: Main"
+    a.run("%s:GetScript('OnClick')(%s)" % (btn, btn))
+    assert a.eval("(ns.Sets:Active())") == 2
+    assert a.eval(btn + ":GetText()") == "Set: Empty"
+    assert any(l["kind"] == "empty" for l in popover_lines(a))
+    a.run("%s:GetScript('OnClick')(%s)" % (btn, btn))  # wraps around
+    assert a.eval("(ns.Sets:Active())") == 1
+    assert a.errors() == []
+
+
+def test_launcher_tooltip_set_name(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.UI.Launcher:Create(); local b = ns.UI.Launcher:GetFrame(); b:GetScript('OnEnter')(b)")
+    lines = list(a.eval("GameTooltip.__lines").values())
+    assert "Set: Main" in lines
+
+
+def test_bags_and_set_events_rebuild_view_model(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.UI.Launcher:Create(); ns.UI.Popover:Toggle()")
+    a.run("""
+      __builds = 0
+      local build = ns.ViewModel.Build
+      ns.ViewModel.Build = function(...) __builds = __builds + 1 return build(...) end
+      ns.Buffs[2].bags = 5
+    """)
+    a.run("ns.Events:Fire('FULLBUFF_BAGS')")
+    assert a.eval("__builds") == 1
+    assert [l for l in popover_lines(a) if l["kind"] == "item"][1]["sub"].endswith("×5")
+    a.run("ns.Sets:SetActive(2)")
+    assert a.eval("__builds") == 2
 
 
 def test_active_row_highlighted_not_dimmed(addon):

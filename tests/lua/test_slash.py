@@ -1,4 +1,4 @@
-"""Slash commands, options panel logic, language switch, hidden categories."""
+"""Slash commands, options panel logic, language switch."""
 import re
 
 
@@ -72,23 +72,6 @@ def test_reset_clears_position(addon):
     assert a.errors() == []
 
 
-def test_hidden_category_excluded_from_viewmodel(addon):
-    a = loaded(addon)
-    a.run("""
-      ns.PlayerState:Get()
-      local function cats() local t = {} for _, s in ipairs(ns.ViewModel:Build().sections) do t[s.cat] = true end return t end
-      __ns.before = cats()
-      ns.DB.hiddenCats = {FOOD = true}
-      __ns.after = cats()
-      __ns.badgeHidden = ns.ViewModel:Build().badge
-      ns.DB.hiddenCats = {}
-      __ns.badgeShown = ns.ViewModel:Build().badge
-    """)
-    assert a.eval("__ns.before.FOOD") is True
-    assert a.eval("__ns.after.FOOD") is None
-    assert a.eval("__ns.badgeHidden") == a.eval("__ns.badgeShown")
-
-
 def test_options_setters_recompute_and_apply(addon):
     a = loaded(addon)
     a.run("ns.UI.Launcher:Create()")
@@ -152,8 +135,8 @@ def test_weight_override_changes_recommendation(addon):
         local cat = {order = {"FOOD"}, FOOD = {E(1, "A", {AP=10}), E(2, "B", {HIT=10})}}
         local st = {class="WARRIOR", spec=1, level=60, active={}, stats={AP=100, HIT=0},
                     unknownAuras={}, ratios={apPerStr=2, hpPerSta=10, manaPerInt=15}}
-        local vm = ns.ViewModel:Build(st, cat)
-        for _, it in ipairs(vm.sections[1].items) do if it.recommended then return it.id end end
+        ns.MaxCalc:Compute(st, cat) -- marks entry.recommended (the view model no longer lists categories)
+        for _, it in ipairs(cat.FOOD) do if it.recommended then return it.id end end
       end
       __ns.r1 = rec()
       ns.Options:SetWeight('HIT', 5)

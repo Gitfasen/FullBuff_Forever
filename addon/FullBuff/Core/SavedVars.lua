@@ -4,7 +4,6 @@ ns.Defaults = {
   DB = {
     lang = "en",
     scale = 1,
-    onlyMissing = false,
     showAllStats = false,
   },
   Char = {
