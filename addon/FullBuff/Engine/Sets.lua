@@ -1,13 +1,21 @@
 local _, ns = ...
 
 -- Per-character buff sets in ns.CharDB (FullBuffCharDB):
---   sets[id] = { name, picks = {[slotId] = buffId | false}, burst = {buffId,...}, spec = nil|1|2|3 }
+--   sets[id] = { name, picks = {[slotId] = buffId | false}, burst = {buffId,...}, spec = nil|1|2|3,
+--                auto = true|nil }
 --   activeSet, nextSetId.   picks: false = "not used", absent = empty.
+-- auto: only the default set made by EnsureDefault; while set, its picks follow the
+-- current recommendations (recomputed on FULLBUFF_STATE). Any Pick clears it.
 -- Every mutation fires FULLBUFF_SET. Picks naming unknown buffs/slots are never pruned.
+-- Picks are saved under a slot key, but a data rebuild may move a buff to another
+-- slot: readers use Sets:Resolve(set), which files every pick under its buff's slot.
 local Sets = {}
 ns.Sets = Sets
 
 local lastSpec
+-- Spec binding and auto picks wait for PLAYER_ENTERING_WORLD: before it the talent
+-- snapshot may be incomplete (spec 1 by default).
+local worldReady = false
 
 local function db()
   local c = ns.CharDB
@@ -112,7 +120,8 @@ function Sets:EnsureDefault()
   local c = db()
   if not c then return end
   if next(c.sets) == nil then
-    self:Create(ns.L.SET_DEFAULT_NAME)
+    local id = self:Create(ns.L.SET_DEFAULT_NAME)
+    if id then c.sets[id].auto = true end
   elseif not c.sets[c.activeSet] then
     c.activeSet = lowestId()
     changed()
@@ -133,11 +142,48 @@ function Sets:Delete(id)
   changed()
 end
 
--- buffId: a buff id, false ("not used") or nil (empty).
+-- The slot a saved pick belongs to: its buff's current slot, else the saved key.
+local function slotOf(key, buffId)
+  local buff = buffId and ns.Buffs and ns.Buffs[buffId]
+  return buff and buff.excl or key
+end
+
+local function keyLess(a, b) return tostring(a) < tostring(b) end
+
+-- Resolve(set) -> { [slotKey] = buffId | false }: every pick under its buff's current
+-- slot (unknown buffs keep their saved key; false stays under its key). A buff id
+-- picked under several keys, or two picks landing in one slot: the first by saved-key
+-- order wins.
+function Sets:Resolve(set)
+  local out, seen = {}, {}
+  local picks = set and set.picks
+  if not picks then return out end
+  local keys = {}
+  for k in pairs(picks) do keys[#keys + 1] = k end
+  table.sort(keys, keyLess)
+  for _, k in ipairs(keys) do
+    local v = picks[k]
+    if v == false then
+      if out[k] == nil then out[k] = false end
+    elseif v ~= nil and not seen[v] then
+      seen[v] = true
+      local slot = slotOf(k, v)
+      if out[slot] == nil then out[slot] = v end
+    end
+  end
+  return out
+end
+
+-- buffId: a buff id, false ("not used") or nil (empty). Other keys whose pick
+-- resolves to the same slot are removed first; the set stops following recommendations.
 function Sets:Pick(id, slotId, buffId)
   local set = self:Get(id)
   if not set then return end
+  for k, v in pairs(set.picks) do
+    if k ~= slotId and slotOf(k, v) == slotId then set.picks[k] = nil end
+  end
   set.picks[slotId] = buffId
+  set.auto = nil
   changed()
 end
 
@@ -189,17 +235,50 @@ end
 
 ns.Events:On("FULLBUFF_LOADED", function() Sets:EnsureDefault() end)
 
-ns.Events:On("FULLBUFF_STATE", function()
-  local state = ns.PlayerState:Get()
-  local spec = state and state.spec
-  if not spec or spec == lastSpec then return end
-  lastSpec = spec
+local function samePicks(a, b)
+  for k, v in pairs(a) do
+    if b[k] ~= v then return false end
+  end
+  for k in pairs(b) do
+    if a[k] == nil then return false end
+  end
+  return true
+end
+
+-- Recompute the picks of every auto set from the current recommendations.
+function Sets:RefreshAuto()
   local c = db()
   if not c then return end
-  for id, set in pairs(c.sets) do
-    if set.spec == spec then
-      if c.activeSet ~= id then Sets:SetActive(id) end
-      return
+  local picks
+  for _, set in pairs(c.sets) do
+    if set.auto then
+      picks = picks or recommendedPicks()
+      if not samePicks(set.picks, picks) then
+        local copy = {}
+        for k, v in pairs(picks) do copy[k] = v end
+        set.picks = copy
+        changed()
+      end
     end
   end
+end
+
+ns.Events:On("PLAYER_ENTERING_WORLD", function() worldReady = true end)
+
+ns.Events:On("FULLBUFF_STATE", function()
+  if not worldReady then return end
+  local c = db()
+  if not c then return end
+  local state = ns.PlayerState:Get()
+  local spec = state and state.spec
+  if spec and spec ~= lastSpec then
+    lastSpec = spec
+    for id, set in pairs(c.sets) do
+      if set.spec == spec then
+        if c.activeSet ~= id then Sets:SetActive(id) end
+        break
+      end
+    end
+  end
+  Sets:RefreshAuto()
 end)

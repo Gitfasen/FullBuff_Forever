@@ -84,6 +84,7 @@ def test_bind_spec_unique(addon):
 def test_spec_change_switches_set(addon):
     a = boot(addon)
     a.run("ns.Sets:Create('B'); ns.Sets:BindSpec(2, 3)")
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
     a.run("ns.Events:Fire('FULLBUFF_STATE')")  # spec 1 seen, no binding
     assert a.eval("(ns.Sets:Active())") == 1
     a.run("SPEC = 3; ns.Events:Fire('FULLBUFF_STATE')")
@@ -130,3 +131,95 @@ def test_mutations_fire_event(addon):
         a.run("ns.Sets:" + c)
         assert a.eval("n") == i, c
     assert a.errors() == []
+
+
+def test_spec_ignored_before_entering_world(addon):
+    # Before PLAYER_ENTERING_WORLD the talent snapshot may be incomplete: no switching.
+    a = boot(addon)
+    a.run("ns.Sets:Create('One'); ns.Sets:Create('Two'); ns.Sets:BindSpec(2, 1); ns.Sets:BindSpec(3, 2)")
+    a.run("ns.Events:Fire('FULLBUFF_STATE')")  # spec 1, pre-PEW
+    assert a.eval("(ns.Sets:Active())") == 1
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
+    a.run("SPEC = 2; ns.Events:Fire('FULLBUFF_STATE')")
+    assert a.eval("(ns.Sets:Active())") == 3
+    assert a.errors() == []
+
+
+def test_spec_after_entering_world_same_spec_as_before(addon):
+    # The pre-PEW snapshot must not be remembered as "already seen".
+    a = boot(addon)
+    a.run("ns.Sets:Create('One'); ns.Sets:BindSpec(2, 1)")
+    a.run("ns.Events:Fire('FULLBUFF_STATE')")
+    assert a.eval("(ns.Sets:Active())") == 1
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
+    a.run("ns.Events:Fire('FULLBUFF_STATE')")
+    assert a.eval("(ns.Sets:Active())") == 2
+
+
+# --- Resolve / Pick by buff slot ---
+RESOLVE = "ns.Buffs = {[10]={name='A', excl='slotA'}, [11]={name='B', excl='slotA'}, [20]={name='F', excl='slotB'}}"
+
+
+def test_resolve_maps_picks_to_buff_slots(addon):
+    a = boot(addon)
+    a.run(RESOLVE)
+    r = a.eval("ns.Sets:Resolve({picks={OLD=10, slotB=false, gone=99}})")
+    assert dict(r) == {"slotA": 10, "slotB": False, "gone": 99}
+    # duplicates: the first by saved-key order wins
+    r = a.eval("ns.Sets:Resolve({picks={OLD=10, slotA=10}})")
+    assert dict(r) == {"slotA": 10}
+    assert dict(a.eval("ns.Sets:Resolve({picks={}})")) == {}
+    assert dict(a.eval("ns.Sets:Resolve(nil)")) == {}
+
+
+def test_pick_removes_keys_resolving_to_same_slot(addon):
+    a = boot(addon)
+    a.run(RESOLVE)
+    a.run("ns.Sets:Get(1).picks = {OLD=10, slotB=20}")
+    a.run("ns.Sets:Pick(1, 'slotA', 10)")
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 10, "slotB": 20}
+    a.run("ns.Sets:Get(1).picks.OLD2 = 11; ns.Sets:Pick(1, 'slotA', false)")
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": False, "slotB": 20}
+
+
+# --- auto ("Main" follows recommendations until edited) ---
+def test_main_is_auto_and_follows_recommendations(addon):
+    a = boot(addon)
+    assert a.eval("ns.Sets:Get(1).auto") is True
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
+    # a level-up changes the recommendation in slotA from 11 to 10
+    a.run("ns.Scoring.MarkRecommended = function(_, cat) for _, c in ipairs(cat.order) do "
+          "for _, e in ipairs(cat[c]) do if e.id == 10 or e.id == 21 then e.recommended = true end end end end")
+    a.run("ns.Events:Fire('FULLBUFF_STATE')")
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 10, "slotB": 21}
+    assert a.errors() == []
+
+
+def test_auto_waits_for_entering_world(addon):
+    a = boot(addon)
+    a.run("ns.Scoring.MarkRecommended = function() end; ns.Events:Fire('FULLBUFF_STATE')")
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 11, "slotB": 20}
+
+
+def test_pick_clears_auto_burst_does_not(addon):
+    a = boot(addon)
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
+    a.run("ns.Sets:AddBurst(1, 30); ns.Sets:MoveBurst(1, 30, 1); ns.Sets:RemoveBurst(1, 30)")
+    assert a.eval("ns.Sets:Get(1).auto") is True
+    a.run("ns.Sets:Pick(1, 'slotA', 10)")
+    assert a.eval("ns.Sets:Get(1).auto") is None
+    a.run("ns.Events:Fire('FULLBUFF_STATE')")
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 10, "slotB": 20}
+
+
+def test_copy_and_new_are_not_auto(addon):
+    a = boot(addon)
+    assert a.eval("ns.Sets:Get(ns.Sets:Copy(1)).auto") is None
+    assert a.eval("ns.Sets:Get(ns.Sets:Create('X')).auto") is None
+
+
+def test_auto_unchanged_recommendations_do_not_fire(addon):
+    a = boot(addon)
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
+    a.run("n = 0; ns.Events:On('FULLBUFF_SET', function() n = n + 1 end); ns.Events:Fire('FULLBUFF_STATE')")
+    assert a.eval("n") == 0
