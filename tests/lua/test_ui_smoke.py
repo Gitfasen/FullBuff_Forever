@@ -1,3 +1,4 @@
+import re
 """Smoke tests: UI files load against the permissive frame mock and do not raise."""
 
 
@@ -67,14 +68,28 @@ ns.Catalog.Build = function() return cat end
 """
 
 
+BS = chr(92)  # a single backslash
+SINGLE = re.compile("Interface" + re.escape(BS) + "(?!" + re.escape(BS) + ")")
+
+
+def single_backslash_lines(text):
+    return [n for n, line in enumerate(text.splitlines(), 1) if SINGLE.search(line)]
+
+
+def test_scanner_detects_single_backslash():
+    bad = 'local x = "Interface' + BS + 'Icons' + BS + 'X"'
+    good = 'local x = "Interface' + BS * 2 + 'Icons' + BS * 2 + 'X"'
+    assert single_backslash_lines(bad) == [1]
+    assert single_backslash_lines(good) == []
+    assert single_backslash_lines('local x = "Interface/Icons/X"') == []
+
+
 def test_no_single_backslash_texture_paths():
-    import re
     from harness import ADDON_DIR
     bad = []
     for f in ADDON_DIR.rglob("*.lua"):
-        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
-            if re.search(r"Interface\(?!\)", line):
-                bad.append("%s:%d" % (f.name, n))
+        for n in single_backslash_lines(f.read_text(encoding="utf-8")):
+            bad.append("%s:%d" % (f.name, n))
     assert bad == []
 
 
@@ -84,12 +99,6 @@ def test_launcher_texture_and_tooltip(addon):
     a.run(FIXTURE)
     a.run("ns.UI.Launcher:Create()")
     assert a.eval("ns.UI.Launcher:GetFrame() ~= nil")
-    # the icon texture was set with the exact path
-    a.run("""
-      local found = false
-      local b = ns.UI.Launcher:GetFrame()
-      __ns.__tex = {}
-    """)
     a.run("""
       local b = ns.UI.Launcher:GetFrame()
       b:GetScript("OnEnter")(b)
@@ -142,7 +151,7 @@ def test_popover_rows(addon):
     """)
     names = list(a.eval("__ns.__names").values())
     subs = list(a.eval("__ns.__subs").values())
-    star = "★"
-    # CAN_ADD first; both are the best in their (own) group, so both carry the star
+    star = "|TInterface" + BS + "TargetingFrame" + BS + "UI-RaidTargetingIcon_1:0|t"
+    # CAN_ADD first; both are the best in their (own) group, so both carry the raid-star marker
     assert names == [star + " Bravo", star + " Alpha"]
     assert subs[0] == "+20 Strength, +2% Critical strike"

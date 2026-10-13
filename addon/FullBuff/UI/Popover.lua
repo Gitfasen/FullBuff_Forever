@@ -10,7 +10,7 @@ local FRAME_NAME = "FullBuffPopover"
 local WIDTH, HEIGHT = 340, 440
 local STAT_H, SECTION_H, ITEM_H = 16, 22, 32
 
-local STAR = "\226\152\133" -- U+2605 (black star), UTF-8 bytes
+local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:0|t" -- raid-target star: exists in every client
 local frame, scroll, content, staleText, titleText, headerText, onlyMissing, onlyMissingLabel
 local pool, used = {}, 0
 
