@@ -8,22 +8,87 @@ tremove = tremove or table.remove
 
 -- Frames and events
 local frames = {}
-function CreateFrame(frameType, name, parent)
-  local f = { __type = frameType, __name = name, __events = {}, __scripts = {}, __shown = true }
-  function f:RegisterEvent(e) self.__events[e] = true end
-  function f:UnregisterEvent(e) self.__events[e] = nil end
-  function f:UnregisterAllEvents() self.__events = {} end
-  function f:IsEventRegistered(e) return self.__events[e] == true end
-  function f:SetScript(n, fn) self.__scripts[n] = fn end
-  function f:GetScript(n) return self.__scripts[n] end
-  function f:HookScript(n, fn) self.__scripts[n] = fn end
-  function f:Show() self.__shown = true end
-  function f:Hide() self.__shown = false end
-  function f:IsShown() return self.__shown end
-  function f:SetParent(p) end
+-- Permissive frame stub: known methods below are real, every other method is a
+-- no-op (Get...Texture/FontString/Region style getters return a stub).
+local noop = function() end
+local newFrame
+local frameMethods = {}
+local frameMT = {
+  __index = function(t, k)
+    local m = frameMethods[k]
+    if m then return m end
+    if type(k) == "string" and k:match("^%u") then
+      if k:match("^Get.*Texture$") or k:match("^Get.*FontString$") or k:match("^Create") then
+        return function(self) return newFrame("Texture") end
+      end
+      return noop
+    end
+  end,
+}
+function frameMethods:RegisterEvent(e) self.__events[e] = true end
+function frameMethods:UnregisterEvent(e) self.__events[e] = nil end
+function frameMethods:UnregisterAllEvents() self.__events = {} end
+function frameMethods:IsEventRegistered(e) return self.__events[e] == true end
+function frameMethods:SetScript(n, fn) self.__scripts[n] = fn end
+function frameMethods:GetScript(n) return self.__scripts[n] end
+function frameMethods:HookScript(n, fn) self.__scripts[n] = fn end
+function frameMethods:Show()
+  local was = self.__shown
+  self.__shown = true
+  if not was and self.__scripts.OnShow then self.__scripts.OnShow(self) end
+end
+function frameMethods:Hide()
+  local was = self.__shown
+  self.__shown = false
+  if was and self.__scripts.OnHide then self.__scripts.OnHide(self) end
+end
+function frameMethods:SetShown(v) if v then self:Show() else self:Hide() end end
+function frameMethods:IsShown() return self.__shown end
+function frameMethods:IsVisible() return self.__shown end
+function frameMethods:SetParent(p) end
+function frameMethods:GetName() return self.__name end
+function frameMethods:GetObjectType() return self.__type end
+function frameMethods:SetPoint(...) self.__point = { ... } end
+function frameMethods:GetPoint() local p = self.__point or {} return p[1] or "CENTER", p[2], p[3] or p[1] or "CENTER", p[4] or 0, p[5] or 0 end
+function frameMethods:ClearAllPoints() self.__point = nil end
+function frameMethods:SetSize(w, h) self.__w, self.__h = w, h end
+function frameMethods:SetWidth(w) self.__w = w end
+function frameMethods:SetHeight(h) self.__h = h end
+function frameMethods:GetWidth() return self.__w or 100 end
+function frameMethods:GetHeight() return self.__h or 100 end
+function frameMethods:GetCenter() return 500, 400 end
+function frameMethods:GetLeft() return 450 end
+function frameMethods:GetRight() return 550 end
+function frameMethods:GetTop() return 420 end
+function frameMethods:GetBottom() return 380 end
+function frameMethods:GetEffectiveScale() return 1 end
+function frameMethods:GetScale() return 1 end
+function frameMethods:SetText(t) self.__text = t end
+function frameMethods:GetText() return self.__text end
+function frameMethods:SetChecked(v) self.__checked = v and true or false end
+function frameMethods:GetChecked() return self.__checked end
+function frameMethods:GetStringWidth() return 50 end
+function frameMethods:GetVerticalScroll() return 0 end
+function frameMethods:GetScrollChild() return self.__child end
+function frameMethods:SetScrollChild(c) self.__child = c end
+
+newFrame = function(frameType, name, parent)
+  local f = setmetatable({ __type = frameType, __name = name, __events = {}, __scripts = {}, __shown = true }, frameMT)
   frames[#frames + 1] = f
   return f
 end
+function CreateFrame(frameType, name, parent, template)
+  local f = newFrame(frameType, name, parent)
+  if name then _G[name] = f end
+  return f
+end
+UIParent = newFrame("Frame", "UIParent")
+UISpecialFrames = {}
+GameTooltip = newFrame("GameTooltip", "GameTooltip")
+GameTooltip.__shown = false
+GetScreenWidth = function() return 1920 end
+GetScreenHeight = function() return 1080 end
+GetCursorPosition = function() return 0, 0 end
 
 -- Deliver a game event to every frame registered for it.
 function __fire_event(event, ...)
