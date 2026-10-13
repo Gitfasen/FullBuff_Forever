@@ -199,3 +199,32 @@ GetManaRegen = function() return 0, 0 end
 UnitArmor = function(unit) return 0, 0, 0, 0, 0 end
 UnitHealthMax = function(unit) return 1000 end
 UnitPowerMax = function(unit, power) return 1000 end
+
+-- Maps: GetMapInfo returns a name per id ("Zone<id>"); override for nil cases.
+C_Map = {
+  GetMapInfo = function(id) return { name = "Zone" .. tostring(id), mapID = id } end,
+}
+
+-- LibStub + HereBeDragons-Pins mock. Every call is recorded in __hbd.calls as
+-- { fn=, ref=, icon=, mapID=, x=, y= }; removals as { fn=, ref=, icon= }.
+__hbd = { calls = {}, available = true }
+local function rec(fn, ref, icon, mapID, x, y)
+  __hbd.calls[#__hbd.calls + 1] = { fn = fn, ref = ref, icon = icon, mapID = mapID, x = x, y = y }
+end
+local hbdPins = {
+  AddWorldMapIconMap = function(_, ref, icon, mapID, x, y) rec("AddWorldMapIconMap", ref, icon, mapID, x, y) return true end,
+  AddMinimapIconMap = function(_, ref, icon, mapID, x, y) rec("AddMinimapIconMap", ref, icon, mapID, x, y) return true end,
+  RemoveWorldMapIcon = function(_, ref, icon) rec("RemoveWorldMapIcon", ref, icon) end,
+  RemoveMinimapIcon = function(_, ref, icon) rec("RemoveMinimapIcon", ref, icon) end,
+  RemoveAllWorldMapIcons = function(_, ref) rec("RemoveAllWorldMapIcons", ref) end,
+  RemoveAllMinimapIcons = function(_, ref) rec("RemoveAllMinimapIcons", ref) end,
+}
+LibStub = setmetatable({}, {
+  __call = function(_, name, silent)
+    if __hbd.available and (name == "HereBeDragonsQuestie-Pins-2.0" or name == "HereBeDragons-Pins-2.0") then
+      return hbdPins
+    end
+    if silent then return nil end
+    error("Cannot find a library instance of " .. tostring(name))
+  end,
+})

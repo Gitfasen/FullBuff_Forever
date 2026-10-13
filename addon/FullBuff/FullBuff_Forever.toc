@@ -7,6 +7,11 @@
 ## IconTexture: Interface\Icons\Spell_Holy_WordFortitude
 ## AddonCompartmentFunc: FullBuff_OnCompartmentClick
 
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\HereBeDragons\HereBeDragons-2.0.lua
+Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
+
 Core\Init.lua
 Core\Locale.lua
 Locales\enUS.lua
@@ -22,6 +27,9 @@ Engine\Catalog.lua
 Engine\Scoring.lua
 Engine\MaxCalc.lua
 
+Systems\MapPins.lua
+
 UI\ViewModel.lua
 UI\Launcher.lua
 UI\Popover.lua
+UI\DetailCard.lua

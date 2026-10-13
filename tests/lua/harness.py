@@ -66,6 +66,8 @@ class Addon:
             "function(src, name, ns) return assert(loadstring(src, '@' .. name))(%r, ns) end"
             % ADDON_NAME)
         for rel in (files if files is not None else toc_files()):
+            if rel.startswith("Libs/"):
+                continue  # third-party libs (LibStub, HereBeDragons) are mocked in wowmock.lua
             src = (ADDON_DIR / rel).read_text(encoding="utf-8")
             loader(src, rel, self.ns)
 

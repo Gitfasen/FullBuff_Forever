@@ -36,20 +36,18 @@ local function num(v)
   return string.format("%.1f", v)
 end
 
-function VM.FormatFx(fx)
-  local parts, total = {}, 0
-  local function push(text)
-    total = total + 1
-    if total <= MAX_FX then parts[#parts + 1] = text end
-  end
+-- FxEntries(fx) -> every effect as a list of strings ("+25 Agility"), same order and
+-- wording as FormatFx but without the MAX_FX cut-off.
+function VM.FxEntries(fx)
+  local parts = {}
   local order = ns.Scoring and ns.Scoring.CANONICAL or {}
   for _, k in ipairs(order) do
     local v = fx and fx[k]
     if v and v ~= 0 then
       if PERCENT_STAT[k] then
-        push(string.format("+%s%% %s", num(v), label(k)))
+        parts[#parts + 1] = string.format("+%s%% %s", num(v), label(k))
       else
-        push(string.format("+%s %s", num(v), label(k)))
+        parts[#parts + 1] = string.format("+%s %s", num(v), label(k))
       end
     end
   end
@@ -57,11 +55,18 @@ function VM.FormatFx(fx)
     local v = fx and fx[k]
     if v and v ~= 0 then
       local text = label(k):gsub("%s*%%$", "")
-      push(string.format("+%s%% %s", num(v), text))
+      parts[#parts + 1] = string.format("+%s%% %s", num(v), text)
     end
   end
+  return parts
+end
+
+function VM.FormatFx(fx)
+  local all = VM.FxEntries(fx)
+  local parts = {}
+  for i = 1, math.min(#all, MAX_FX) do parts[i] = all[i] end
   local s = table.concat(parts, ", ")
-  if total > MAX_FX then s = s .. ", \226\128\166" end -- UTF-8 ellipsis
+  if #all > MAX_FX then s = s .. ", \226\128\166" end -- UTF-8 ellipsis
   return s
 end
 

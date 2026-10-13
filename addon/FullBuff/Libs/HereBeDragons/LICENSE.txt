@@ -1,0 +1,13 @@
+HereBeDragons-2.0 and HereBeDragons-Pins-2.0
+Author: Nevcairiel (https://github.com/Nevcairiel/HereBeDragons)
+
+License: BSD, as declared by the author in the upstream HereBeDragons.toc
+("## X-License: BSD"). The upstream repository ships no separate LICENSE file
+and the source files carry no copyright header, so no further license text exists.
+
+These files are the copy bundled with the Questie addon (Questie/Libs/HereBeDragons),
+which Questie modified: the library names are "HereBeDragonsQuestie-2.0" and
+"HereBeDragonsQuestie-Pins-2.0", the pin template is renamed, and Classic/Forever
+map-data fixes were added. They are used here unmodified from that copy.
+
+BSD terms are GPL-3.0 compatible; this addon redistributes the source files as-is.

@@ -1,0 +1,2 @@
+LibStub (Kaelten, Cladhaire, ckknight, Mikk, Ammo, Nevcairiel, joshborke)
+"LibStub is hereby placed in the Public Domain" (header of LibStub.lua; LibStub.toc: X-License: Public Domain).

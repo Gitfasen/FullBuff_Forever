@@ -18,3 +18,14 @@ Install first: `powershell -ExecutionPolicy Bypass -File tools/install_junction.
 - [ ] Dragging the launcher is refused during combat (pending user verification)
 - [ ] Section headers collapse and expand and the state survives `/reload`; the "Show only missing" checkbox filters rows (pending user verification)
 - [ ] Hovering the launcher shows progress and the missing buffs list (pending user verification)
+
+## 3. Detail card and map pins (Task 14)
+
+- [ ] Clicking a buff row opens the detail card beside the popover; it shows effects, duration, required level, score, stacking group and every source (pending user verification)
+- [ ] The pin button on a vendor source puts a red cross on the world map (at the right spot) and on the minimap; the card shows it as pinned (pending user verification)
+- [ ] Several pins at once work ("Pin all" pins every source with coordinates; pins in other zones show on their own maps) (pending user verification)
+- [ ] Right-clicking a pin on the map or minimap removes it; "Clear pins" removes all of them (pending user verification)
+- [ ] Pins survive `/reload` and a relog (pending user verification)
+- [ ] Hovering a pin shows the buff name, the source text and the right-click hint (pending user verification)
+- [ ] The card and pin tooltips are fully Ukrainian after switching the language, with no layout overflow (pending user verification)
+- [ ] The libraries load without Lua errors on Forever (no `LibStub`/`HereBeDragonsQuestie` errors) and the pins still work when Questie is also enabled (pending user verification)
