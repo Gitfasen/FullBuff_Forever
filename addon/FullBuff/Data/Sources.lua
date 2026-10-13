@@ -4,13 +4,6 @@ ns.Sources = {
   [673] = {
     {kind="craft", name="Alchemy", note="55"},
   },
-  [1135] = {
-    {kind="drop", name="Solid Chest", mapID=1447, x=0.6594, y=0.769},
-    {kind="drop", name="Solid Chest", mapID=1447, x=0.7652, y=0.4587},
-    {kind="drop", name="Solid Chest", mapID=1447, x=0.3802, y=0.8026},
-    {kind="drop", name="Solid Chest", mapID=1447, x=0.6214, y=0.9364},
-    {kind="drop", name="Solid Chest", mapID=1447, x=0.4143, y=0.2032, note="+77 more"},
-  },
   [2367] = {
     {kind="quest", name="Shipment to Stormwind"},
     {kind="quest", name="A Magical Affront"},
@@ -394,9 +387,6 @@ ns.Sources = {
   [15233] = {
     {kind="quest", name="Crystal Ward"},
   },
-  [15822] = {
-    {kind="craft", name="Alchemy", note="245"},
-  },
   [16323] = {
     {kind="quest", name="Winterfall E'ko"},
   },
@@ -453,9 +443,6 @@ ns.Sources = {
     {kind="vendor", name="Argent Quartermaster Lightspark", mapID=1422, x=0.4284, y=0.8372},
     {kind="vendor", name="Quartermaster Miranda Breechlock", mapID=1423, x=0.7179, y=0.5025},
   },
-  [19634] = {
-    {kind="quest", name="Curing the Sick"},
-  },
   [19705] = {
     {kind="quest", name="Stalk With The Earthmother"},
     {kind="drop", name="Brightly Colored Egg", mapID=1426, x=0.4548, y=0.5098},
@@ -497,9 +484,6 @@ ns.Sources = {
     {kind="vendor", name="Grunnda Wolfheart", mapID=1459, x=0.4933, y=0.8249},
     {kind="vendor", name="Jekyll Flandring", mapID=1416, x=0.6284, y=0.5927},
     {kind="drop", name="Grunnda Wolfheart", mapID=1459, x=0.4933, y=0.8249},
-  },
-  [24360] = {
-    {kind="craft", name="Alchemy", note="290"},
   },
   [24363] = {
     {kind="craft", name="Alchemy", note="290"},
@@ -612,18 +596,123 @@ ns.Sources = {
   [1245244] = {
     {kind="craft", name="Alchemy", note="10"},
   },
-  [1248406] = {
+  [1248377] = {
+    {kind="quest", name="Selling Fish"},
+    {kind="quest", name="Recipe of the Kaldorei"},
+    {kind="quest", name="Restocking the Larders"},
+    {kind="craft", name="Cooking", note="130"},
+    {kind="craft", name="Cooking", note="50"},
+    {kind="craft", name="Cooking", note="75"},
+    {kind="craft", name="Cooking", note="45"},
+    {kind="craft", name="Cooking", note="30"},
+  },
+  [1248378] = {
+    {kind="craft", name="Cooking", note="50"},
+  },
+  [1248379] = {
+    {kind="quest", name="Easy Strider Living"},
+    {kind="quest", name="Crab Season"},
+    {kind="craft", name="Cooking", note="125"},
+    {kind="craft", name="Cooking", note="90"},
+    {kind="craft", name="Cooking", note="45"},
+    {kind="craft", name="Cooking", note="35"},
+    {kind="craft", name="Cooking", note="40"},
+  },
+  [1248380] = {
+    {kind="quest", name="Beer Basted Boar Ribs"},
+    {kind="craft", name="Cooking", note="45"},
+    {kind="craft", name="Cooking", note="60"},
+    {kind="craft", name="Cooking", note="80"},
+  },
+  [1248381] = {
+    {kind="craft", name="Cooking", note="140"},
+    {kind="craft", name="Cooking", note="215"},
+    {kind="craft", name="Cooking", note="80"},
+  },
+  [1248382] = {
+    {kind="craft", name="Cooking", note="90"},
+    {kind="craft", name="Cooking", note="120"},
+  },
+  [1248383] = {
+    {kind="quest", name="Redridge Goulash"},
+    {kind="craft", name="Cooking", note="135"},
+    {kind="craft", name="Cooking", note="115"},
+  },
+  [1248384] = {
+    {kind="quest", name="Goretusk Liver Pie"},
+    {kind="quest", name="Thelsamar Blood Sausages"},
+    {kind="craft", name="Cooking", note="90"},
+    {kind="craft", name="Cooking", note="120"},
+    {kind="craft", name="Cooking", note="100"},
+    {kind="craft", name="Cooking", note="150"},
+  },
+  [1248386] = {
+    {kind="quest", name="Soothing Turtle Bisque"},
+    {kind="craft", name="Cooking", note="170"},
+    {kind="craft", name="Cooking", note="150"},
+    {kind="craft", name="Cooking", note="215"},
+  },
+  [1248387] = {
+    {kind="quest", name="Seasoned Wolf Kabobs"},
+    {kind="craft", name="Cooking", note="140"},
+    {kind="craft", name="Cooking", note="175"},
+    {kind="craft", name="Cooking", note="160"},
+    {kind="craft", name="Cooking", note="165"},
+  },
+  [1248388] = {
+    {kind="craft", name="Cooking", note="215"},
+  },
+  [1248389] = {
+    {kind="craft", name="Cooking", note="130"},
+    {kind="craft", name="Cooking", note="150"},
+  },
+  [1248390] = {
+    {kind="craft", name="Cooking", note="215"},
+    {kind="craft", name="Cooking", note="240"},
+    {kind="craft", name="Cooking", note="195"},
+  },
+  [1248391] = {
+    {kind="quest", name="Costly Menace"},
+    {kind="craft", name="Cooking", note="190"},
+    {kind="craft", name="Cooking", note="215"},
+    {kind="craft", name="Cooking", note="160"},
+  },
+  [1248392] = {
+    {kind="quest", name="Barbecued Buzzard Wings"},
+    {kind="craft", name="Cooking", note="215"},
+    {kind="craft", name="Cooking", note="265"},
+    {kind="craft", name="Cooking", note="280"},
+  },
+  [1248393] = {
+    {kind="craft", name="Cooking", note="200"},
+  },
+  [1248394] = {
+    {kind="craft", name="Cooking", note="265"},
+    {kind="craft", name="Cooking", note="240"},
+  },
+  [1248395] = {
+    {kind="craft", name="Cooking", note="215"},
+    {kind="craft", name="Cooking", note="265"},
+  },
+  [1248396] = {
+    {kind="craft", name="Cooking", note="315"},
+    {kind="craft", name="Cooking", note="230"},
+  },
+  [1248397] = {
+    {kind="craft", name="Cooking", note="230"},
+  },
+  [1248398] = {
     {kind="craft", name="Cooking", note="280"},
     {kind="craft", name="Cooking", note="0"},
   },
-  [1248420] = {
+  [1248399] = {
     {kind="craft", name="Cooking", note="285"},
     {kind="craft", name="Cooking", note="280"},
   },
-  [1248421] = {
+  [1248400] = {
     {kind="craft", name="Cooking", note="280"},
   },
-  [1248422] = {
+  [1248401] = {
     {kind="craft", name="Cooking", note="325"},
     {kind="craft", name="Cooking", note="280"},
   },
@@ -633,14 +722,195 @@ ns.Sources = {
   [1249113] = {
     {kind="craft", name="Enchanting", note="285"},
   },
-  [1249519] = {
+  [1249500] = {
+    {kind="craft", name="Cooking", note="45"},
+  },
+  [1249501] = {
+    {kind="craft", name="Cooking", note="90"},
+  },
+  [1249502] = {
+    {kind="craft", name="Cooking", note="90"},
+  },
+  [1249503] = {
+    {kind="vendor", name="Vernon Hale", mapID=1433, x=0.224, y=0.4783},
+    {kind="vendor", name="Khara Deepwater", mapID=1432, x=0.4028, y=0.3928},
+    {kind="vendor", name="Myizz Luckycatch", mapID=1434, x=0.2746, y=0.7711},
+    {kind="vendor", name="Wigcik", mapID=1434, x=0.28, y=0.7699},
+    {kind="vendor", name="Gretchen Vogel", mapID=1433, x=0.1775, y=0.4426},
+    {kind="vendor", name="Stuart Fleming", mapID=1437, x=0.0802, y=0.5835},
+    {kind="vendor", name="Kilxx", mapID=1413, x=0.6277, y=0.3824},
+    {kind="vendor", name="Hal McAllister", mapID=1424, x=0.4985, y=0.6241},
+    {kind="vendor", name="Laird", mapID=1439, x=0.3677, y=0.4428},
+    {kind="vendor", name="Talaelar", mapID=1457, x=0.4747, y=0.5745},
+    {kind="vendor", name="Brogus Thunderbrew", mapID=1459, x=0.4305, y=0.1763},
+    {kind="vendor", name="Kriggon Talsone", mapID=1436, x=0.3623, y=0.9018},
+    {kind="vendor", name="Heldan Galesong", mapID=1439, x=0.3697, y=0.5635},
+    {kind="vendor", name="Innkeeper Thulbek", mapID=1434, x=0.3149, y=0.2975},
+    {kind="vendor", name="Innkeeper Brianna", mapID=1433, x=0.2192, y=0.4482},
+    {kind="vendor", name="Innkeeper Kimlya", mapID=1440, x=0.3699, y=0.4922},
+    {kind="vendor", name="Innkeeper Wiley", mapID=1413, x=0.6205, y=0.3941},
+    {kind="vendor", name="Innkeeper Skindle", mapID=1434, x=0.2704, y=0.7731},
+    {kind="vendor", name="Harklane", mapID=1444, x=0.3103, y=0.4625},
+    {kind="vendor", name="Gikkix", mapID=1446, x=0.6664, y=0.2208},
+    {kind="vendor", name="Innkeeper Heather", mapID=1436, x=0.5286, y=0.5371},
+    {kind="vendor", name="Shrye Ragefist", mapID=1459, x=0.4853, y=0.8047},
+    {kind="vendor", name="Himmik", mapID=1452, x=0.6133, y=0.3916},
+    {kind="vendor", name="Wik'Tar", mapID=1440, x=0.1171, y=0.341},
+    {kind="vendor", name="Lard", mapID=1425, x=0.7814, y=0.8138},
+    {kind="drop", name="Stonetusk Boar", mapID=1429, x=0.4411, y=0.6938},
+    {kind="drop", name="Stonetusk Boar", mapID=1429, x=0.4092, y=0.6951},
+    {kind="drop", name="Stonetusk Boar", mapID=1429, x=0.3987, y=0.6969},
+    {kind="drop", name="Stonetusk Boar", mapID=1429, x=0.3885, y=0.687},
+    {kind="drop", name="Stonetusk Boar", mapID=1429, x=0.3762, y=0.7078, note="+1385 more"},
+    {kind="craft", name="Cooking", note="45"},
+  },
+  [1249504] = {
+    {kind="craft", name="Cooking", note="120"},
+  },
+  [1249505] = {
+    {kind="craft", name="Cooking", note="90"},
+  },
+  [1249506] = {
+    {kind="vendor", name="Vernon Hale", mapID=1433, x=0.224, y=0.4783},
+    {kind="vendor", name="Khara Deepwater", mapID=1432, x=0.4028, y=0.3928},
+    {kind="vendor", name="Myizz Luckycatch", mapID=1434, x=0.2746, y=0.7711},
+    {kind="vendor", name="Wigcik", mapID=1434, x=0.28, y=0.7699},
+    {kind="vendor", name="Gretchen Vogel", mapID=1433, x=0.1775, y=0.4426},
+    {kind="vendor", name="Stuart Fleming", mapID=1437, x=0.0802, y=0.5835},
+    {kind="vendor", name="Kilxx", mapID=1413, x=0.6277, y=0.3824},
+    {kind="vendor", name="Hal McAllister", mapID=1424, x=0.4985, y=0.6241},
+    {kind="vendor", name="Laird", mapID=1439, x=0.3677, y=0.4428},
+    {kind="vendor", name="Talaelar", mapID=1457, x=0.4747, y=0.5745},
+    {kind="vendor", name="Brogus Thunderbrew", mapID=1459, x=0.4305, y=0.1763},
+    {kind="vendor", name="Kriggon Talsone", mapID=1436, x=0.3623, y=0.9018},
+    {kind="vendor", name="Heldan Galesong", mapID=1439, x=0.3697, y=0.5635},
+    {kind="vendor", name="Innkeeper Thulbek", mapID=1434, x=0.3149, y=0.2975},
+    {kind="vendor", name="Innkeeper Brianna", mapID=1433, x=0.2192, y=0.4482},
+    {kind="vendor", name="Innkeeper Kimlya", mapID=1440, x=0.3699, y=0.4922},
+    {kind="vendor", name="Innkeeper Wiley", mapID=1413, x=0.6205, y=0.3941},
+    {kind="vendor", name="Innkeeper Skindle", mapID=1434, x=0.2704, y=0.7731},
+    {kind="vendor", name="Harklane", mapID=1444, x=0.3103, y=0.4625},
+    {kind="vendor", name="Gikkix", mapID=1446, x=0.6664, y=0.2208},
+    {kind="vendor", name="Innkeeper Heather", mapID=1436, x=0.5286, y=0.5371},
+    {kind="vendor", name="Shrye Ragefist", mapID=1459, x=0.4853, y=0.8047},
+    {kind="vendor", name="Himmik", mapID=1452, x=0.6133, y=0.3916},
+    {kind="vendor", name="Wik'Tar", mapID=1440, x=0.1171, y=0.341},
+    {kind="vendor", name="Lard", mapID=1425, x=0.7814, y=0.8138},
+    {kind="drop", name="Harvest Watcher", mapID=1436, x=0.38, y=0.4784},
+    {kind="drop", name="Harvest Watcher", mapID=1436, x=0.3899, y=0.5481},
+    {kind="drop", name="Harvest Watcher", mapID=1436, x=0.4988, y=0.2129},
+    {kind="drop", name="Harvest Watcher", mapID=1436, x=0.3901, y=0.4931},
+    {kind="drop", name="Harvest Watcher", mapID=1436, x=0.5009, y=0.2256, note="+1572 more"},
+    {kind="craft", name="Cooking", note="90"},
+  },
+  [1249507] = {
+    {kind="craft", name="Cooking", note="215"},
+  },
+  [1249508] = {
+    {kind="vendor", name="Vernon Hale", mapID=1433, x=0.224, y=0.4783},
+    {kind="vendor", name="Khara Deepwater", mapID=1432, x=0.4028, y=0.3928},
+    {kind="vendor", name="Myizz Luckycatch", mapID=1434, x=0.2746, y=0.7711},
+    {kind="vendor", name="Wigcik", mapID=1434, x=0.28, y=0.7699},
+    {kind="vendor", name="Gretchen Vogel", mapID=1433, x=0.1775, y=0.4426},
+    {kind="vendor", name="Stuart Fleming", mapID=1437, x=0.0802, y=0.5835},
+    {kind="vendor", name="Kilxx", mapID=1413, x=0.6277, y=0.3824},
+    {kind="vendor", name="Hal McAllister", mapID=1424, x=0.4985, y=0.6241},
+    {kind="vendor", name="Chylina", mapID=1442, x=0.3549, y=0.0617},
+    {kind="vendor", name="Laird", mapID=1439, x=0.3677, y=0.4428},
+    {kind="vendor", name="Talaelar", mapID=1457, x=0.4747, y=0.5745},
+    {kind="vendor", name="Brogus Thunderbrew", mapID=1459, x=0.4305, y=0.1763},
+    {kind="vendor", name="Kriggon Talsone", mapID=1436, x=0.3623, y=0.9018},
+    {kind="vendor", name="Heldan Galesong", mapID=1439, x=0.3697, y=0.5635},
+    {kind="vendor", name="Innkeeper Thulbek", mapID=1434, x=0.3149, y=0.2975},
+    {kind="vendor", name="Innkeeper Brianna", mapID=1433, x=0.2192, y=0.4482},
+    {kind="vendor", name="Innkeeper Kimlya", mapID=1440, x=0.3699, y=0.4922},
+    {kind="vendor", name="Innkeeper Wiley", mapID=1413, x=0.6205, y=0.3941},
+    {kind="vendor", name="Innkeeper Skindle", mapID=1434, x=0.2704, y=0.7731},
+    {kind="vendor", name="Harklane", mapID=1444, x=0.3103, y=0.4625},
+    {kind="vendor", name="Gikkix", mapID=1446, x=0.6664, y=0.2208},
+    {kind="vendor", name="Innkeeper Heather", mapID=1436, x=0.5286, y=0.5371},
+    {kind="vendor", name="Shrye Ragefist", mapID=1459, x=0.4853, y=0.8047},
+    {kind="vendor", name="Himmik", mapID=1452, x=0.6133, y=0.3916},
+    {kind="vendor", name="Wik'Tar", mapID=1440, x=0.1171, y=0.341},
+    {kind="vendor", name="Lard", mapID=1425, x=0.7814, y=0.8138},
+    {kind="drop", name="Skeletal Horror", mapID=1431, x=0.7967, y=0.6187},
+    {kind="drop", name="Skeletal Horror", mapID=1431, x=0.8171, y=0.6052},
+    {kind="drop", name="Skeletal Horror", mapID=1431, x=0.8109, y=0.562},
+    {kind="drop", name="Skeletal Horror", mapID=1431, x=0.8199, y=0.5714},
+    {kind="drop", name="Skeletal Horror", mapID=1431, x=0.8101, y=0.6174, note="+1125 more"},
+    {kind="craft", name="Cooking", note="140"},
+  },
+  [1249509] = {
+    {kind="drop", name="Crystal Spine Basilisk", mapID=1434, x=0.4923, y=0.0964},
+    {kind="drop", name="Crystal Spine Basilisk", mapID=1434, x=0.4799, y=0.0646},
+    {kind="drop", name="Crystal Spine Basilisk", mapID=1434, x=0.4873, y=0.1044},
+    {kind="drop", name="Crystal Spine Basilisk", mapID=1434, x=0.474, y=0.0588},
+    {kind="drop", name="Crystal Spine Basilisk", mapID=1434, x=0.4657, y=0.0584, note="+551 more"},
+    {kind="craft", name="Cooking", note="215"},
+  },
+  [1249510] = {
+    {kind="craft", name="Cooking", note="220"},
+  },
+  [1249511] = {
+    {kind="vendor", name="Vernon Hale", mapID=1433, x=0.224, y=0.4783},
+    {kind="vendor", name="Khara Deepwater", mapID=1432, x=0.4028, y=0.3928},
+    {kind="vendor", name="Myizz Luckycatch", mapID=1434, x=0.2746, y=0.7711},
+    {kind="vendor", name="Wigcik", mapID=1434, x=0.28, y=0.7699},
+    {kind="vendor", name="Gretchen Vogel", mapID=1433, x=0.1775, y=0.4426},
+    {kind="vendor", name="Stuart Fleming", mapID=1437, x=0.0802, y=0.5835},
+    {kind="vendor", name="Kilxx", mapID=1413, x=0.6277, y=0.3824},
+    {kind="vendor", name="Hal McAllister", mapID=1424, x=0.4985, y=0.6241},
+    {kind="vendor", name="Laird", mapID=1439, x=0.3677, y=0.4428},
+    {kind="vendor", name="Talaelar", mapID=1457, x=0.4747, y=0.5745},
+    {kind="vendor", name="Brogus Thunderbrew", mapID=1459, x=0.4305, y=0.1763},
+    {kind="vendor", name="Kriggon Talsone", mapID=1436, x=0.3623, y=0.9018},
+    {kind="vendor", name="Heldan Galesong", mapID=1439, x=0.3697, y=0.5635},
+    {kind="vendor", name="Innkeeper Thulbek", mapID=1434, x=0.3149, y=0.2975},
+    {kind="vendor", name="Innkeeper Brianna", mapID=1433, x=0.2192, y=0.4482},
+    {kind="vendor", name="Innkeeper Kimlya", mapID=1440, x=0.3699, y=0.4922},
+    {kind="vendor", name="Innkeeper Wiley", mapID=1413, x=0.6205, y=0.3941},
+    {kind="vendor", name="Innkeeper Skindle", mapID=1434, x=0.2704, y=0.7731},
+    {kind="vendor", name="Harklane", mapID=1444, x=0.3103, y=0.4625},
+    {kind="vendor", name="Gikkix", mapID=1446, x=0.6664, y=0.2208},
+    {kind="vendor", name="Innkeeper Heather", mapID=1436, x=0.5286, y=0.5371},
+    {kind="vendor", name="Shrye Ragefist", mapID=1459, x=0.4853, y=0.8047},
+    {kind="vendor", name="Himmik", mapID=1452, x=0.6133, y=0.3916},
+    {kind="vendor", name="Wik'Tar", mapID=1440, x=0.1171, y=0.341},
+    {kind="vendor", name="Lard", mapID=1425, x=0.7814, y=0.8138},
+    {kind="drop", name="Darcy", mapID=1433, x=0.2153, y=0.443},
+    {kind="drop", name="Marshal Marris", mapID=1433, x=0.2841, y=0.4897},
+    {kind="drop", name="Feast Fish", mapID=1453, x=0.5082, y=0.9183},
+    {kind="drop", name="Feast Fish", mapID=1453, x=0.5102, y=0.9312},
+    {kind="drop", name="Feast Fish", mapID=1453, x=0.5136, y=0.9276, note="+3 more"},
+    {kind="craft", name="Cooking", note="190"},
+  },
+  [1249512] = {
+    {kind="craft", name="Cooking", note="265"},
+  },
+  [1249513] = {
+    {kind="vendor", name="Vernon Hale", mapID=1433, x=0.224, y=0.4783},
+    {kind="vendor", name="Khara Deepwater", mapID=1432, x=0.4028, y=0.3928},
+    {kind="vendor", name="Myizz Luckycatch", mapID=1434, x=0.2746, y=0.7711},
+    {kind="vendor", name="Gretchen Vogel", mapID=1433, x=0.1775, y=0.4426},
+    {kind="vendor", name="Stuart Fleming", mapID=1437, x=0.0802, y=0.5835},
+    {kind="vendor", name="Kilxx", mapID=1413, x=0.6277, y=0.3824},
+    {kind="vendor", name="Hal McAllister", mapID=1424, x=0.4985, y=0.6241},
+    {kind="vendor", name="Laird", mapID=1439, x=0.3677, y=0.4428},
+    {kind="vendor", name="Talaelar", mapID=1457, x=0.4747, y=0.5745},
+    {kind="vendor", name="Kriggon Talsone", mapID=1436, x=0.3623, y=0.9018},
+    {kind="vendor", name="Heldan Galesong", mapID=1439, x=0.3697, y=0.5635},
+    {kind="vendor", name="Innkeeper Brianna", mapID=1433, x=0.2192, y=0.4482},
+    {kind="vendor", name="Harklane", mapID=1444, x=0.3103, y=0.4625},
+    {kind="vendor", name="Innkeeper Heather", mapID=1436, x=0.5286, y=0.5371},
+    {kind="drop", name="Darcy", mapID=1433, x=0.2153, y=0.443},
+    {kind="drop", name="Witherbark Hideskinner", mapID=1425, x=0.2797, y=0.5796},
+    {kind="drop", name="Witherbark Hideskinner", mapID=1425, x=0.2801, y=0.5894},
+    {kind="drop", name="Witherbark Hideskinner", mapID=1425, x=0.3113, y=0.5854},
+    {kind="drop", name="Witherbark Hideskinner", mapID=1425, x=0.3161, y=0.5652, note="+279 more"},
+    {kind="craft", name="Cooking", note="265"},
     {kind="craft", name="Cooking", note="290"},
-    {kind="craft", name="Cooking", note="315"},
   },
-  [1249520] = {
-    {kind="craft", name="Cooking", note="315"},
-  },
-  [1249521] = {
+  [1249514] = {
     {kind="vendor", name="Vernon Hale", mapID=1433, x=0.224, y=0.4783},
     {kind="vendor", name="Khara Deepwater", mapID=1432, x=0.4028, y=0.3928},
     {kind="vendor", name="Myizz Luckycatch", mapID=1434, x=0.2746, y=0.7711},
@@ -674,13 +944,55 @@ ns.Sources = {
     {kind="craft", name="Cooking", note="210"},
     {kind="craft", name="Cooking", note="265"},
   },
-  [1249523] = {
+  [1249515] = {
+    {kind="craft", name="Cooking", note="290"},
+    {kind="craft", name="Cooking", note="315"},
+  },
+  [1249516] = {
+    {kind="craft", name="Cooking", note="315"},
+  },
+  [1249522] = {
     {kind="craft", name="Cooking", note="280"},
   },
-  [1249926] = {
+  [1249914] = {
+    {kind="craft", name="Cooking", note="30"},
+  },
+  [1249915] = {
+    {kind="craft", name="Cooking", note="105"},
+  },
+  [1249916] = {
+    {kind="craft", name="Cooking", note="135"},
+  },
+  [1249917] = {
+    {kind="craft", name="Cooking", note="185"},
+  },
+  [1249918] = {
+    {kind="craft", name="Cooking", note="215"},
+  },
+  [1249919] = {
     {kind="craft", name="Cooking", note="255"},
   },
-  [1249927] = {
+  [1249920] = {
+    {kind="drop", name="Windfury Harpy", mapID=1412, x=0.3562, y=0.4834},
+    {kind="drop", name="Windfury Harpy", mapID=1412, x=0.3514, y=0.4919},
+    {kind="drop", name="Windfury Harpy", mapID=1412, x=0.6336, y=0.712},
+    {kind="drop", name="Windfury Harpy", mapID=1412, x=0.6339, y=0.7345},
+    {kind="drop", name="Windfury Harpy", mapID=1412, x=0.6272, y=0.7026, note="+22 more"},
+    {kind="craft", name="Cooking", note="30"},
+  },
+  [1249921] = {
+    {kind="craft", name="Cooking", note="105"},
+  },
+  [1249922] = {
+    {kind="craft", name="Cooking", note="155"},
+  },
+  [1249923] = {
+    {kind="craft", name="Cooking", note="195"},
+  },
+  [1249924] = {
+    {kind="craft", name="Cooking", note="220"},
+  },
+  [1249925] = {
     {kind="craft", name="Cooking", note="260"},
   },
   [1250918] = {
@@ -851,9 +1163,6 @@ ns.Sources = {
   [1304594] = {
     {kind="npc", name="Thrall", mapID=1454, x=0.3173, y=0.3782},
   },
-  [1304678] = {
-    {kind="npc", name="Stormwind City", note="Alliance counterpart of Warchief's Blessing; giver not in QuestieDB"},
-  },
   [1304690] = {
     {kind="object", name="Corrupted Songflower", mapID=1448, x=0.5294, y=0.8895},
     {kind="object", name="Corrupted Songflower", mapID=1448, x=0.462, y=0.8548},
@@ -869,10 +1178,33 @@ ns.Sources = {
   [1304751] = {
     {kind="npc", name="King Gordok", note="Dire Maul North tribute run"},
   },
+  [1304753] = {
+    {kind="npc", name="King Gordok", note="Dire Maul North tribute run"},
+  },
   [1304759] = {
     {kind="npc", name="King Gordok", note="Dire Maul North tribute run"},
   },
   [1304771] = {
+    {kind="npc", name="Sayge", mapID=1429, x=0.4213, y=0.69, note="Darkmoon Faire"},
+    {kind="npc", name="Sayge", mapID=1412, x=0.3783, y=0.4518, note="Darkmoon Faire"},
+  },
+  [1304772] = {
+    {kind="npc", name="Sayge", mapID=1429, x=0.4213, y=0.69, note="Darkmoon Faire"},
+    {kind="npc", name="Sayge", mapID=1412, x=0.3783, y=0.4518, note="Darkmoon Faire"},
+  },
+  [1304775] = {
+    {kind="npc", name="Sayge", mapID=1429, x=0.4213, y=0.69, note="Darkmoon Faire"},
+    {kind="npc", name="Sayge", mapID=1412, x=0.3783, y=0.4518, note="Darkmoon Faire"},
+  },
+  [1304778] = {
+    {kind="npc", name="Sayge", mapID=1429, x=0.4213, y=0.69, note="Darkmoon Faire"},
+    {kind="npc", name="Sayge", mapID=1412, x=0.3783, y=0.4518, note="Darkmoon Faire"},
+  },
+  [1304780] = {
+    {kind="npc", name="Sayge", mapID=1429, x=0.4213, y=0.69, note="Darkmoon Faire"},
+    {kind="npc", name="Sayge", mapID=1412, x=0.3783, y=0.4518, note="Darkmoon Faire"},
+  },
+  [1304782] = {
     {kind="npc", name="Sayge", mapID=1429, x=0.4213, y=0.69, note="Darkmoon Faire"},
     {kind="npc", name="Sayge", mapID=1412, x=0.3783, y=0.4518, note="Darkmoon Faire"},
   },

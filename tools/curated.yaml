@@ -16,10 +16,8 @@ include:
     cat: WORLD
     sources:
       - {kind: npc, npc: 4949}  # Thrall, Orgrimmar
-  - id: 1304678  # Might of Stormwind (Alliance counterpart of Warchief's Blessing)
+  - id: 1304678  # Might of Stormwind (Alliance counterpart of Warchief's Blessing); giver unknown -> no source
     cat: WORLD
-    sources:
-      - {kind: npc, name: "Stormwind City", note: "Alliance counterpart of Warchief's Blessing; giver not in QuestieDB"}
   - id: 1304690  # Songflower Serenade
     cat: WORLD
     sources:
@@ -45,10 +43,35 @@ include:
     cat: WORLD
     sources:
       - {kind: npc, name: "King Gordok", note: "Dire Maul North tribute run"}
-  - id: 1304771  # Sayge's Dark Fortune of Armor (the only fortune with a stat key)
+  - id: 1304753  # Mol'dar's Moxie (Dire Maul North tribute), +15% Stamina
+    cat: WORLD
+    sources:
+      - {kind: npc, name: "King Gordok", note: "Dire Maul North tribute run"}
+  # Sayge's Dark Fortunes (Darkmoon Faire); one fortune at a time. Damage (+10% damage) has no stat key.
+  - id: 1304771  # Armor +10%
     cat: WORLD
     sources:
       - {kind: npc, npc: 14822, note: "Darkmoon Faire"}  # Sayge
+  - id: 1304782  # Strength +10%
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822, note: "Darkmoon Faire"}
+  - id: 1304780  # Agility +10%
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822, note: "Darkmoon Faire"}
+  - id: 1304778  # Stamina +10%
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822, note: "Darkmoon Faire"}
+  - id: 1304772  # Intelligence +10%
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822, note: "Darkmoon Faire"}
+  - id: 1304775  # Spirit +10%
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822, note: "Darkmoon Faire"}
   # --- Consumables of item subclass "Other", listed on wowclassicforever.info.
   - {id: 10667, cat: ELIXIR}  # Rage of Ages - R.O.I.D.S. (8410)
   - {id: 10668, cat: ELIXIR}  # Spirit of Boar - Lung Juice Cocktail (8411)
@@ -64,10 +87,14 @@ include:
   - {id: 5257, cat: FOOD}     # Thunderbrew - Keg of Thunderbrew (1262)
   - {id: 5020, cat: FOOD}     # Stormstout (4952)
   - {id: 5021, cat: FOOD}     # Trogg Ale - Trogg Brew (4953)
+  # --- Forever-new trinkets (new spell, item id in Forever's 24xxxx+ range) missing from QuestieDB;
+  #     listing them keeps them out of the "unobtainable" filter.
+  - {id: 1295233, cat: TRINKET}  # Heart of the Primeval (274615)
+  - {id: 1315878, cat: TRINKET}  # Flamebreak Talisman (280071)
 
 exclude:
   - 20906  # Trueshot Aura: passive group aura, excluded by the spec
-  - 1277328  # Dark Sacrifice: converts health to mana (channel), not a stat buff
+  - 409580  # Heart of the Lion: Season of Discovery spell; Forever's hunter page names it only as a client leftover
 
 override:
   25289: {burst: false}  # Battle Shout: 3 min party buff kept up continuously, not a cooldown
@@ -85,9 +112,12 @@ excl_merge:
   - ["Divine Spirit", "Prayer of Spirit"]
   - ["Ice Armor", "Frost Armor"]
   - ["Demon Armor", "Demon Skin"]
+  - ["Aspect of the Hawk", "Aspect of the Beast"]
   - ["Warchief's Blessing", "Might of Stormwind"]
   - ["Spirit of Zanza", "Permanent Spirit of Zanza"]
-  - ["Rumsey Rum Black Label", "Rumsey Rum", "Rumsey Rum Dark", "Gordok Green Grog"]
+  - ["Rumsey Rum Black Label", "Rumsey Rum", "Rumsey Rum Dark", "Rumsey Rum Light", "Gordok Green Grog"]
+  - ["Sayge's Dark Fortune of Armor", "Sayge's Dark Fortune of Strength", "Sayge's Dark Fortune of Agility",
+     "Sayge's Dark Fortune of Stamina", "Sayge's Dark Fortune of Intelligence", "Sayge's Dark Fortune of Spirit"]
 
 # Per class: 3 spec maps in talent-tab order.
 weights:

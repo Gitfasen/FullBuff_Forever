@@ -110,7 +110,8 @@ def test_curated_yaml_loads():
     # Forever's live world-buff ids (the vanilla ids are dummy auras in Forever DB2)
     assert {i["id"] for i in cur["include"]} >= {1304452, 1304594, 1304690, 24425, 1304751, 1304759, 1304771}
     assert not {i["id"] for i in cur["include"]} & {22888, 16609, 15366, 22817, 22818, 22820}
-    assert len(cur["excl_merge"]) == 12
+    assert len(cur["excl_merge"]) == 14
+    assert {1304753, 1304782, 1304780, 1304778, 1304772, 1304775} <= {i["id"] for i in cur["include"]}
 
 
 def test_include_synthesizes_buff_without_spell():
