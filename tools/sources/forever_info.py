@@ -45,38 +45,61 @@ def parse_camping(html: str) -> list[CampBuff]:
     return result
 
 
+def _class_buffs(buffs: dict[int, Buff]) -> dict[str, list[Buff]]:
+    by_name: dict[str, list[Buff]] = {}
+    for b in buffs.values():
+        if b.cat == "CLASS":
+            by_name.setdefault(b.name, []).append(b)
+    return by_name
+
+
 def apply_camping(buffs: dict[int, Buff], unclassified: list[Buff],
                   camps: list[CampBuff]) -> list[str]:
     """Mark camp buffs (all ranks, matched by name); return camp buff names with no match.
 
     Run after curated merges: the exclusive class buff's current `excl` is copied as-is.
+    When several camp objects share a buff name, each camp spell picks the exclusive
+    class buff whose fx keys overlap its own (ties/no overlap: first listed exclusive).
     """
     everything = list(buffs.values()) + list(unclassified)
-    class_excl: dict[str, str] = {}
-    for b in buffs.values():
-        if b.cat == "CLASS" and b.name not in class_excl:
-            class_excl[b.name] = b.excl
-    excl_set: set[int] = set()  # camp buffs whose excl was already set in this call
-    unmatched: list[str] = []
+    classes = _class_buffs(buffs)
+    groups: dict[str, list[CampBuff]] = {}
     for camp in camps:
-        matched = [b for b in everything if b.name == camp.buff_name]
+        groups.setdefault(camp.buff_name, []).append(camp)
+    unmatched: list[str] = []
+    for name, group in groups.items():
+        matched = [b for b in everything if b.name == name]
         if not matched:
-            if camp.buff_name not in unmatched:
-                unmatched.append(camp.buff_name)
+            unmatched.append(name)
             continue
-        note = f"{camp.profession} {camp.skill}"
+        exclusives = [c.exclusive_with for c in group if c.exclusive_with in classes]
+        exclusives = list(dict.fromkeys(exclusives))
         for b in matched:
             old_default = f"{b.cat}:{b.name}"
             b.cat = "CAMPING"
-            if camp.exclusive_with in class_excl and id(b) not in excl_set:
-                b.excl = class_excl[camp.exclusive_with]
-                excl_set.add(id(b))
-            elif id(b) not in excl_set and b.excl in ("", old_default):
+            if exclusives:
+                pick = next((e for e in exclusives
+                             if any(set(c.fx) & set(b.fx) for c in classes[e])), exclusives[0])
+                b.excl = classes[pick][0].excl
+            elif b.excl in ("", old_default):
                 b.excl = f"CAMPING:{b.name}"
-            if not any(s.kind == "camping" and s.name == camp.object_name and s.note == note
-                       for s in b.sources):
-                b.sources.append(Source(kind="camping", name=camp.object_name, note=note))
+            for camp in group:
+                note = f"{camp.profession} {camp.skill}"
+                if not any(x.kind == "camping" and x.name == camp.object_name and x.note == note
+                           for x in b.sources):
+                    b.sources.append(Source(kind="camping", name=camp.object_name, note=note))
     return unmatched
+
+
+def unresolved_exclusives(buffs: dict[int, Buff], camps: list[CampBuff]) -> list[tuple[str, str]]:
+    """(camp buff name, exclusive name) pairs where no CLASS buff has that exclusive name."""
+    classes = _class_buffs(buffs)
+    out: list[tuple[str, str]] = []
+    for c in camps:
+        pair = (c.buff_name, c.exclusive_with)
+        if c.exclusive_with and c.exclusive_with not in classes and pair not in out:
+            out.append(pair)
+    return out
 
 
 def parse_finder(data: dict) -> dict[int, str]:

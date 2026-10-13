@@ -2,7 +2,7 @@ from pathlib import Path
 
 from tools.model import Buff, Source
 from tools.sources.forever_info import (CampBuff, apply_camping, crosscheck, fetch_site,
-                                        parse_camping, parse_finder)
+                                        parse_camping, parse_finder, unresolved_exclusives)
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -86,3 +86,26 @@ def test_fetch_site_one_get_per_url():
     assert html == "CAMP" and data == {"items": []}
     assert len(calls) == 3 and len({u for u, _ in calls}) == 3
     assert all(h["User-Agent"] == "FullBuff-build" for _, h in calls)
+
+
+def test_boosted_stats_picks_exclusive_by_fx_overlap():
+    kings = buff(1, "Blessing of Kings", "CLASS", excl="CLASS:kings", cls="PALADIN")
+    kings.fx = {"STAT_PCT": 0.1}
+    motw = buff(2, "Mark of the Wild", "CLASS", excl="CLASS:motw", cls="DRUID")
+    motw.fx = {"STR": 12, "AGI": 12}
+    pct = buff(10, "Boosted Stats")
+    pct.fx = {"STAT_PCT": 0.05}
+    flat = buff(11, "Boosted Stats")
+    flat.fx = {"STR": 8, "AGI": 8}
+    apply_camping({1: kings, 2: motw, 10: pct, 11: flat}, [], camps())
+    assert pct.excl == "CLASS:kings"
+    assert flat.excl == "CLASS:motw"
+    assert {s.name for s in pct.sources} == {"Enchanted Lute", "Fish Bowl"}
+    assert {s.name for s in flat.sources} == {"Enchanted Lute", "Fish Bowl"}
+
+
+def test_unresolved_exclusive_reported():
+    wisdom = buff(1, "Blessing of Wisdom", "CLASS", excl="CLASS:w", cls="PALADIN")
+    result = unresolved_exclusives({1: wisdom}, camps())
+    assert ("Boosted Mana Regeneration", "Blessing of Wisdom") not in result
+    assert ("Boosted Attack Power", "Blessing of Might") in result
