@@ -12,6 +12,7 @@ except ImportError:  # pragma: no cover
 
 ROOT = Path(__file__).resolve().parents[2]
 BUFFS_LUA = ROOT / "addon" / "FullBuff" / "Data" / "Buffs.lua"
+SLOTS_LUA = ROOT / "addon" / "FullBuff" / "Data" / "Slots.lua"
 
 
 def buff(bid, name, cat, excl, burst=False, fx=None, lvl=1):
@@ -136,3 +137,10 @@ def test_real_data_slots_match_buffs():
     lua.eval("function(src, ns) return loadstring(src, '=emitted')(nil, ns) end")(
         (BUFFS_LUA.parent / "Slots.lua").read_text(encoding="utf-8"), ns)
     assert used == set(ns.Slots.keys())
+
+
+def test_real_data_curated_slot_names():
+    text = SLOTS_LUA.read_text(encoding="utf-8")
+    for sid, en in (("HUNTER_ASPECT", "Hunter aspect"), ("SCROLL_FAMILIAR", "Scroll familiar"),
+                    ("DMF_FORTUNE", "Darkmoon Faire fortune"), ("CAPITAL_BLESSING", "Capital city blessing")):
+        assert 'name={en="%s"' % en in text and '["%s"]' % sid in text

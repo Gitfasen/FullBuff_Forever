@@ -156,6 +156,18 @@ slots:
   - id: STATS
     name: {en: All stats, uk: Усі характеристики}
     groups: ["CLASS:Mark of the Wild"]  # incl. camp Boosted Stats
+  - id: HUNTER_ASPECT
+    name: {en: Hunter aspect, uk: Аспект мисливця}
+    groups: ["CLASS:Aspect of the Hawk"]
+  - id: SCROLL_FAMILIAR
+    name: {en: Scroll familiar, uk: Фамільяр зі сувою}
+    groups: ["SCROLL:Rat Familiar"]
+  - id: DMF_FORTUNE
+    name: {en: Darkmoon Faire fortune, uk: Удача ярмарку Темного Місяця}
+    groups: ["WORLD:Sayge's Dark Fortune of Armor"]
+  - id: CAPITAL_BLESSING
+    name: {en: Capital city blessing, uk: Благословення столиці}
+    groups: ["WORLD:Warchief's Blessing"]
 
 # Per class: 3 spec maps in talent-tab order.
 weights:
