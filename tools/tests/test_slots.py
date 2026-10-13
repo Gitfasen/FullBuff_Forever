@@ -3,7 +3,7 @@ from pathlib import Path
 
 from tools.emit_lua import emit_slots
 from tools.model import Buff
-from tools.slots import apply_slots
+from tools.slots import apply_slots, prune_slots
 
 try:
     from lupa.lua51 import LuaRuntime
@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[2]
 BUFFS_LUA = ROOT / "addon" / "FullBuff" / "Data" / "Buffs.lua"
 
 
-def buff(bid, name, cat, excl, burst=False, fx=None):
-    return Buff(id=bid, name=name, cat=cat, fx=fx or {"INT": 1}, dur=3600, lvl=1, excl=excl,
+def buff(bid, name, cat, excl, burst=False, fx=None, lvl=1):
+    return Buff(id=bid, name=name, cat=cat, fx=fx or {"INT": 1}, dur=3600, lvl=lvl, excl=excl,
                 items=[], burst=burst, new=False)
 
 
@@ -48,15 +48,15 @@ def test_auto_names_en_uk():
              3: buff(3, "Flask of Titans", "FLASK", "FLASK"),
              4: buff(4, "Sharpening", "WEAPON", "WEAPON"),
              5: buff(5, "Tender Wolf Steak", "FOOD", "FOOD:Well Fed"),
-             9: buff(9, "Rat Familiar", "SCROLL", "SCROLL:Rat Familiar"),
-             8: buff(8, "Cat Familiar", "SCROLL", "SCROLL:Rat Familiar")}
+             9: buff(9, "Demon Skin", "CLASS", "CLASS:Demon Armor", lvl=1),
+             8: buff(8, "Demon Armor", "CLASS", "CLASS:Demon Armor", lvl=20)}
     slots, _ = apply_slots(buffs, {})
     assert slots["ELIXIR:AGI"]["name"] == {"en": "Elixir — Agility", "uk": "Еліксир — Спритність"}
     assert slots["SCROLL:AGI"]["name"] == {"en": "Scroll — Agility", "uk": "Сувій — Спритність"}
     assert slots["FLASK"]["name"] == {"en": "Flask", "uk": "Фласка"}
     assert slots["WEAPON"]["name"] == {"en": "Weapon", "uk": "Зброя"}
     assert slots["FOOD:Well Fed"]["name"] == {"en": "Food", "uk": "Їжа"}
-    assert slots["SCROLL:Rat Familiar"]["name"] == {"en": "Cat Familiar", "uk": "Cat Familiar"}
+    assert slots["CLASS:Demon Armor"]["name"] == {"en": "Demon Armor", "uk": "Demon Armor"}
 
 
 def test_order_follows_category_then_name():
@@ -68,10 +68,29 @@ def test_order_follows_category_then_name():
 
 
 def test_burst_not_in_slots():
-    buffs = {1: buff(1, "Potion", "POTION", "POTION:Potion", burst=True),
-             2: buff(2, "Mongoose", "ELIXIR", "ELIXIR:AGI")}
-    slots, _ = apply_slots(buffs, {})
-    assert list(slots) == ["ELIXIR:AGI"]
+    buffs = {1: buff(1, "Potion", "POTION", "SCROLL:INT", burst=True),
+             2: buff(2, "Mongoose", "ELIXIR", "ELIXIR:AGI"),
+             3: buff(3, "Intellect", "SCROLL", "SCROLL:INT")}
+    slots, _ = apply_slots(buffs, INT_SLOT | {"slots": INT_SLOT["slots"]})
+    assert sorted(slots) == ["ELIXIR:AGI", "INT"]
+    assert buffs[1].excl == "SCROLL:INT" and buffs[3].excl == "INT"
+
+
+def test_slot_validation_warnings():
+    buffs = {1: buff(1, "A", "CLASS", "CLASS:A"), 2: buff(2, "B", "CLASS", "CLASS:B")}
+    cur = {"slots": [{"id": "X", "name": {"en": "X", "uk": "X"}, "groups": ["CLASS:A"]},
+                     {"id": "CLASS:B", "name": {"en": "Z", "uk": "Z"}, "groups": []},
+                     {"id": "Y", "name": {"en": "Y", "uk": "Y"}, "groups": ["CLASS:A", "CLASS:B"]}]}
+    _, warnings = apply_slots(buffs, cur)
+    assert "slot Y: group CLASS:A already belongs to slot X" in warnings
+    assert "slot CLASS:B: id collides with an existing group or slot" in warnings
+
+
+def test_prune_slots_drops_unused():
+    buffs = {1: buff(1, "A", "CLASS", "CLASS:A")}
+    slots = {"CLASS:A": {"name": {"en": "A", "uk": "A"}, "order": 1},
+             "CLASS:B": {"name": {"en": "B", "uk": "B"}, "order": 2}}
+    assert list(prune_slots(slots, buffs)) == ["CLASS:A"]
 
 
 def test_emit_slots_loads_in_lua(tmp_path):
@@ -100,4 +119,20 @@ def test_real_data_intellect_slot():
     ex = real_excl()
     assert (ex[("Arcane Intellect", "CLASS")] == ex[("Intellect", "SCROLL")]
             == ex[("Boosted Intellect", "CAMPING")] == "INT")
-    assert ex[("Agility", "SCROLL")] != next(v for (n, c), v in ex.items() if c == "ELIXIR" and v == "ELIXIR:AGI")
+    elixir_agi = {v for (n, c), v in ex.items() if c == "ELIXIR" and v.endswith(":AGI")}
+    assert elixir_agi and ex[("Agility", "SCROLL")] not in elixir_agi
+
+
+def test_real_data_strength_slot():
+    ex = real_excl()
+    assert ex[("Strength", "SCROLL")] == ex[("Extra Strength", "CAMPING")] == "STR"
+
+
+def test_real_data_slots_match_buffs():
+    text = BUFFS_LUA.read_text(encoding="utf-8")
+    used = {m.group(1) for m in re.finditer(r'excl="([^"]*)".*?burst=false', text)}
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    ns = lua.eval("{}")
+    lua.eval("function(src, ns) return loadstring(src, '=emitted')(nil, ns) end")(
+        (BUFFS_LUA.parent / "Slots.lua").read_text(encoding="utf-8"), ns)
+    assert used == set(ns.Slots.keys())

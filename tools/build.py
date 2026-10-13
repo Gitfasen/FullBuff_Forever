@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # python tools/
 from tools.curated import apply_curated, load_weights
 from tools.emit_lua import emit_buffs, emit_slots, emit_sources, emit_weights, write_report
 from tools.extract import extract_buffs
-from tools.slots import apply_slots
+from tools.slots import apply_slots, prune_slots
 from tools.sources.crafting import attach_craft_sources
 from tools.sources.db2 import DB2_TABLES, default_get, fetch_tables, read_table
 from tools.sources.forever_info import (apply_camping, crosscheck, fetch_site, parse_camping,
@@ -92,6 +92,7 @@ def main(argv: list[str]) -> int:
     apply_acquisition_levels(buffs, q)  # after craft sources: a craft route means level 0
     curated_ids = {inc["id"] for inc in cur.get("include") or []}
     unobtainable = drop_unobtainable(buffs, q, curated_ids)
+    slots = prune_slots(slots, buffs)
     weights = load_weights(cur)
 
     emit_buffs(buffs, args.out / "Buffs.lua")

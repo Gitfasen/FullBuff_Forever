@@ -32,7 +32,7 @@ def _auto_name(key: str, members: list[Buff]) -> dict[str, str]:
     if head in PREFIX and tail in STAT_NAMES:
         return {"en": f"{PREFIX[head][0]} — {STAT_NAMES[tail][0]}",
                 "uk": f"{PREFIX[head][1]} — {STAT_NAMES[tail][1]}"}
-    name = min(members, key=lambda b: b.id).name
+    name = max(members, key=lambda b: (b.lvl, b.id)).name
     return {"en": name, "uk": name}
 
 
@@ -40,13 +40,22 @@ def apply_slots(buffs: dict[int, Buff], cur: dict) -> tuple[dict[str, dict], lis
     """Merge curated groups into slots (excl = slot id) and name every non-burst group."""
     warnings: list[str] = []
     curated: dict[str, dict[str, str]] = {}
+    claimed: dict[str, str] = {}
+    live = [b for b in buffs.values() if not b.burst]
     for entry in cur.get("slots") or []:
         sid = entry["id"]
+        if any(b.excl == sid for b in live) or sid in curated:
+            warnings.append(f"slot {sid}: id collides with an existing group or slot")
+            continue
         curated[sid] = dict(entry["name"])
         for g in entry.get("groups") or []:
-            hit = [b for b in buffs.values() if b.excl == g]
+            if g in claimed:
+                warnings.append(f"slot {sid}: group {g} already belongs to slot {claimed[g]}")
+                continue
+            hit = [b for b in live if b.excl == g]
             if not hit:
                 warnings.append(f"slot {sid}: group {g} matches no buff")
+            claimed[g] = sid
             for b in hit:
                 b.excl = sid
     groups: dict[str, list[Buff]] = {}
@@ -61,3 +70,9 @@ def apply_slots(buffs: dict[int, Buff], cur: dict) -> tuple[dict[str, dict], lis
         rows.append((cat_idx, name["en"], key, name))
     rows.sort(key=lambda r: (r[0], r[1], r[2]))
     return {key: {"name": name, "order": i + 1} for i, (_, _, key, name) in enumerate(rows)}, warnings
+
+
+def prune_slots(slots: dict[str, dict], buffs: dict[int, Buff]) -> dict[str, dict]:
+    """Keep only slots used by a final non-burst buff (call after unobtainable buffs are dropped)."""
+    used = {b.excl for b in buffs.values() if not b.burst}
+    return {k: v for k, v in slots.items() if k in used}
