@@ -10,7 +10,8 @@ local RANK = { ACTIVE = 1, MISSING = 2, UNAVAILABLE = 3 }
 -- Evaluate(state, catalog, set) ->
 --   { rows = {{slot, buffId, name, icon, valueText, status, bagCount}},
 --     burst = {{buffId, name, icon, bagCount}}, missingCount, unavailableCount }
--- `state` is unused (kept for API symmetry with MaxCalc:Compute).
+-- `state` is unused (kept for API symmetry with MaxCalc:Compute). Picks are read
+-- through ns.Sets:Resolve (one row per buff, under its current slot).
 function SetTracker:Evaluate(state, catalog, set)
   local VM = ns.ViewModel
   local byId = {}
@@ -23,7 +24,7 @@ function SetTracker:Evaluate(state, catalog, set)
   local slots = ns.Slots or {}
 
   local rows, missing, unavailable = {}, 0, 0
-  for slot, buffId in pairs(set and set.picks or {}) do
+  for slot, buffId in pairs(ns.Sets:Resolve(set)) do
     if buffId then
       local buff, e = buffs[buffId], byId[buffId]
       local status

@@ -155,10 +155,11 @@ end
 -- SlotModel(setId) -> { {slot, name, picked, options = {{buffId, name, valueText,
 -- recommended, active, unavailable}}} }. Slots follow their `order`; slots with no
 -- obtainable option are hidden unless the set picks a buff there (that pick stays,
--- marked unavailable). Options: recommended first, then by name.
+-- marked unavailable). Options: recommended first, then by name. Picks are read
+-- through ns.Sets:Resolve (filed under their buff's current slot).
 function Options:SlotModel(setId)
   local set = ns.Sets:Get(setId)
-  local picks = set and set.picks or {}
+  local picks = ns.Sets:Resolve(set)
   local bySlot = {}
   for _, e in ipairs(entries()) do
     if e.excl and not e.burst and isAvailable(e) then

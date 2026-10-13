@@ -269,3 +269,25 @@ def test_panel_builds_without_error(addon):
         a.run("ns.SetLanguage(%r); __ns.p.__scripts.OnShow(__ns.p)" % lang)
         assert a.errors() == []
     assert a.eval("ns.Options.ui.new:GetText()") == "Новий"
+
+
+def test_pick_under_old_slot_key_matches_buff_slot(addon):
+    # Elixir A (10) is saved under a slot key a data rebuild retired; its buff now
+    # lives in slotA: the editor, the popover rows and the badge all agree.
+    a = boot(addon)
+    a.run("for id, b in pairs(ns.Buffs) do b.excl = ({[10]='slotA', [11]='slotA', [12]='slotA', "
+          "[20]='slotB'})[id] end")
+    a.run("ns.Sets:Get(1).picks = {OLD_A=10, slotA=10}; ns.Sets:Get(1).auto = nil")
+    by = {s["slot"]: s for s in a.eval("ns.Options:SlotModel(1)").values()}
+    assert "OLD_A" not in by and by["slotA"]["picked"] == 10
+    vm = a.eval("ns.ViewModel:Build()")
+    assert [r["buffId"] for r in vm["list"].values()] == [10]
+    assert vm["badge"] == 1
+    panel(a)
+    assert a.eval(radio("slotA", 10) + ":GetChecked()") is True
+    a.run("ns.Sets:Get(1).picks = {OLD_A=10}")
+    click(a, radio("slotA", 10))
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 10}
+    click(a, radio("slotA", 12))
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 12}
+    assert a.errors() == []

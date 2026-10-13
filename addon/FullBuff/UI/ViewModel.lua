@@ -99,7 +99,7 @@ function VM:Build(state, catalog)
   state = state or ns.PlayerState:Get()
   catalog = catalog or ns.Catalog:Build(state)
   local activeId, set = ns.Sets:Active()
-  local calc = ns.MaxCalc:Compute(state, catalog, set and set.picks or {}) -- also marks entry.recommended
+  local calc = ns.MaxCalc:Compute(state, catalog, ns.Sets:Resolve(set)) -- also marks entry.recommended
   local tracked = ns.SetTracker:Evaluate(state, catalog, set or { picks = {}, burst = {} })
 
   local header = {

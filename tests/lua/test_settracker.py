@@ -60,8 +60,17 @@ def test_buff_without_catalog_entry_unavailable(addon):
 def test_unknown_slot_kept(addon):
     _, r = ev(addon, "{picks={gone=2, s1=1}, burst={}}")
     assert rows(r) == [("gone", 2, "ACTIVE"), ("s1", 1, "MISSING")]
+    # one buff picked under two keys: one row (first saved key; buff 1 has no slot)
     _, r = ev(addon, "{picks={gone=1, s1=1}, burst={}}")
-    assert rows(r) == [("s1", 1, "MISSING"), ("gone", 1, "MISSING")]
+    assert rows(r) == [("gone", 1, "MISSING")]
+
+
+def test_pick_filed_under_buff_slot(addon):
+    a = addon()
+    a.run(SETUP)
+    a.run("ns.Buffs[1].excl = 's1'; __ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={OLD=1, s1=1}, burst={}})")
+    r = a.eval("__ns.__r")
+    assert rows(r) == [("s1", 1, "MISSING")] and r["missingCount"] == 1
 
 
 def test_missing_count_includes_zero_burst(addon):
