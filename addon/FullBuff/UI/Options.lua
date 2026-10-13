@@ -515,6 +515,16 @@ local function layoutSets()
   hideFrom(setButtons, #ids + 1)
   y = y - math.max(1, math.ceil(#ids / 4)) * 26 - 4
 
+  -- the default set follows recommendations until a slot is edited
+  if set and set.auto then
+    ui.autoLabel:SetText(L.SET_AUTO)
+    place(ui.autoLabel, 20, y)
+    ui.autoLabel:Show()
+    y = y - 18
+  else
+    ui.autoLabel:Hide()
+  end
+
   -- New / Copy / Rename / Delete (+ rename edit box)
   for i, b in ipairs({ ui.new, ui.copy, ui.rename, ui.delete }) do
     place(b, 16 + (i - 1) * 104, y)
@@ -643,6 +653,8 @@ local function buildSets()
   setsHeader:SetPoint("TOPLEFT", setsFrame, "TOPLEFT", 16, 0)
   setsSpecLabel = setsFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
   burstHeader = setsFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+  ui.autoLabel = setsFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+  ui.autoLabel:Hide()
 
   ui.new = newButton(setsFrame, 100)
   ui.new:SetScript("OnClick", function() Options:NewSet() end)
@@ -657,14 +669,19 @@ local function buildSets()
   ui.renameBox:SetAutoFocus(false)
   ui.renameBox:SetMaxLetters(40)
   ui.renameBox:Hide()
+  -- The box sits on its own row of the layout, so every show/hide re-lays it out.
+  local function closeRename(box)
+    box:Hide()
+    Options:RefreshSets()
+  end
   ui.renameBox:SetScript("OnEnterPressed", function(self)
     local text = (self:GetText() or ""):match("^%s*(.-)%s*$")
     local id = self.fbSet
-    self:Hide()
+    closeRename(self)
     if id and text ~= "" then ns.Sets:Rename(id, text) end
   end)
-  ui.renameBox:SetScript("OnEscapePressed", function(self) self:Hide() end)
-  ui.renameBox:SetScript("OnEditFocusLost", function(self) self:Hide() end)
+  ui.renameBox:SetScript("OnEscapePressed", closeRename)
+  ui.renameBox:SetScript("OnEditFocusLost", closeRename)
   ui.rename = newButton(setsFrame, 100)
   ui.rename:SetScript("OnClick", function()
     local id, set = ns.Sets:Active()
@@ -673,6 +690,7 @@ local function buildSets()
     box.fbSet = id
     box:SetText(set.name)
     box:Show()
+    Options:RefreshSets()
     box:SetFocus()
     box:HighlightText()
   end)

@@ -291,3 +291,36 @@ def test_pick_under_old_slot_key_matches_buff_slot(addon):
     click(a, radio("slotA", 12))
     assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 12}
     assert a.errors() == []
+
+
+def test_rename_box_positioned_on_first_open_and_relaid_after_escape(addon):
+    a = boot(addon)
+    panel(a)
+    assert a.eval("ns.Options.ui.renameBox.__point") is None
+    click(a, "ns.Options.ui.rename")
+    assert a.eval("ns.Options.ui.renameBox.__point ~= nil") is True
+    spec_y = a.eval("ns.Options.ui.specs[0].__point[5]")
+    a.run("local b = ns.Options.ui.renameBox; b.__scripts.OnEscapePressed(b)")
+    assert a.eval("ns.Options.ui.renameBox:IsShown()") is False
+    # layout redone without the box row: the spec radios move back up by its height
+    assert a.eval("ns.Options.ui.specs[0].__point[5]") == spec_y + 26
+    click(a, "ns.Options.ui.rename")
+    assert a.eval("ns.Options.ui.specs[0].__point[5]") == spec_y
+    a.run("local b = ns.Options.ui.renameBox; b.__scripts.OnEditFocusLost(b)")
+    assert a.eval("ns.Options.ui.specs[0].__point[5]") == spec_y + 26
+    click(a, "ns.Options.ui.rename")
+    a.run("local b = ns.Options.ui.renameBox; b:SetText('Main'); b.__scripts.OnEnterPressed(b)")
+    assert a.eval("ns.Options.ui.specs[0].__point[5]") == spec_y + 26
+    assert a.errors() == []
+
+
+def test_auto_label_shown_for_auto_set(addon):
+    for lang, text in (("en", "Follows recommendations (edit any slot to customize)"),
+                       ("uk", "Слідує рекомендаціям (змініть будь-який слот, щоб налаштувати)")):
+        a = boot(addon, lang)
+        panel(a)
+        assert a.eval("ns.Options.ui.autoLabel:IsShown()") is True
+        assert a.eval("ns.Options.ui.autoLabel:GetText()") == text
+        click(a, radio("slotA", 12))
+        assert a.eval("ns.Options.ui.autoLabel:IsShown()") is False
+        assert a.errors() == []
