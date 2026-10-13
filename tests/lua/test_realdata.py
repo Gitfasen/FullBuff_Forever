@@ -81,5 +81,5 @@ def test_uk_flask_wording_and_empty_set(addon):
     assert a.eval("ns.Locales.ukUA.SET_EMPTY") == "Набір порожній — додайте бафи в налаштуваннях"
     for loc in ("enUS", "ukUA"):
         src = a.eval("(function() local t = {} for k, v in pairs(ns.Locales.%s) do t[#t + 1] = v end "
-                     "return table.concat(t, '\n') end)()" % loc)
+                     "return table.concat(t, ' ') end)()" % loc)
         assert "Фласк" not in src and "Фляги" not in src
