@@ -149,6 +149,9 @@ function Popover:Refresh()
     b.name:SetText(L.SET_OPEN_SETTINGS)
   end
 
+  -- rows sharing a name (e.g. two "Well Fed") get their slot name in the sub-line
+  local nameCount = {}
+  for _, it in ipairs(vm.list) do nameCount[it.name] = (nameCount[it.name] or 0) + 1 end
   for _, it in ipairs(vm.list) do
     b, y = takeLine(y, "item", ITEM_H)
     b.fbStatus = it.status
@@ -168,9 +171,11 @@ function Popover:Refresh()
     else
       b.name:SetText(it.name)
     end
-    if it.status == "UNAVAILABLE" then
-      sub = L.SET_UNAVAILABLE
-    elseif it.status == "MISSING" and (it.bagCount or 0) > 0 then
+    if it.status == "UNAVAILABLE" then sub = L.SET_UNAVAILABLE end
+    if nameCount[it.name] > 1 and it.slotName then
+      sub = (sub ~= "" and (sub .. "  ·  ") or "") .. it.slotName
+    end
+    if it.status == "MISSING" and (it.bagCount or 0) > 0 then
       sub = sub .. "  " .. L.IN_BAGS:format(it.bagCount)
     end
     b.sub:SetText(sub)
@@ -185,21 +190,34 @@ function Popover:Refresh()
     b.name:SetText(L.BURST_TITLE)
     for _, it in ipairs(vm.burst) do
       b, y = takeLine(y, "burst", ITEM_H)
-      b.fbId, b.fbName = it.buffId, it.name
+      b.fbName = it.name
       b.icon:SetTexture(it.icon)
       b.icon:Show()
-      b.name:SetPoint("LEFT", 34, 0)
-      b.name:SetPoint("RIGHT", -50, 0)
       b.name:SetWordWrap(false)
       b.name:SetText(it.name)
-      b.c2:SetPoint("RIGHT", -6, 0)
-      b.c2:SetWidth(44)
-      b.c2:SetJustifyH("RIGHT")
-      local n = it.bagCount or 0
-      if n == 0 then
-        b.c2:SetText(RED .. "×0|r")
+      if it.unavailable then
+        -- greyed, with the unavailable text; no bag count, no detail card
+        b.name:SetPoint("TOPLEFT", 34, -4)
+        b.name:SetPoint("TOPRIGHT", -4, -4)
+        b.sub:SetPoint("BOTTOMLEFT", 34, 4)
+        b.sub:SetPoint("BOTTOMRIGHT", -4, 4)
+        b.sub:SetWordWrap(false)
+        b.sub:SetText(L.SET_UNAVAILABLE)
+        local c = COLORS.UNAVAILABLE
+        b.name:SetTextColor(c[1], c[2], c[3])
       else
-        b.c2:SetText("×" .. n)
+        b.fbId = it.buffId
+        b.name:SetPoint("LEFT", 34, 0)
+        b.name:SetPoint("RIGHT", -50, 0)
+        b.c2:SetPoint("RIGHT", -6, 0)
+        b.c2:SetWidth(44)
+        b.c2:SetJustifyH("RIGHT")
+        local n = it.bagCount or 0
+        if n == 0 then
+          b.c2:SetText(RED .. "×0|r")
+        else
+          b.c2:SetText("×" .. n)
+        end
       end
     end
   end

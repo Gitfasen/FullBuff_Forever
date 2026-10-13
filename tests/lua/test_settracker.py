@@ -84,3 +84,19 @@ def test_empty_set_rows_empty_and_zero_missing(addon):
     a, r = ev(addon, "{picks={s1=false}, burst={}}")
     assert len(r["rows"]) == 0 and r["missingCount"] == 0 and len(r["burst"]) == 0
     assert a.errors() == []
+
+
+def test_burst_unknown_or_without_entry_unavailable_not_counted(addon):
+    # 4 has no catalog entry, 77 is not in ns.Buffs; only 5 (no bags) counts as missing
+    a, r = ev(addon, "{picks={}, burst={4, 77, 5}}")
+    b = {x["buffId"]: x for x in r["burst"].values()}
+    assert b[4]["unavailable"] is True and b[77]["unavailable"] is True and b[77]["name"] == "#77"
+    assert b[5]["unavailable"] is not True
+    assert r["missingCount"] == 1
+    assert a.errors() == []
+
+
+def test_rows_carry_slot_name(addon):
+    _, r = ev(addon, "{picks={s1=1, gone=2}, burst={}}")
+    names = {x["slot"]: x["slotName"] for x in r["rows"].values()}
+    assert names == {"s1": "S1", "gone": "gone"}

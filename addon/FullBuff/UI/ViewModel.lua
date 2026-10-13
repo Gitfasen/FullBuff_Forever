@@ -10,14 +10,14 @@ local _, ns = ...
 --              specName: the talent tree's name, else "Specialization N"; specHint: set
 --              while the spec is not detected automatically)
 --   sets    = { {id, name, active}... }   in ns.Sets:List() order,
---   list    = SetTracker rows of the active set {slot,buffId,name,icon,valueText,status,bagCount}
+--   list    = SetTracker rows of the active set {slot,slotName,buffId,name,icon,valueText,status,bagCount}
 --             (status ACTIVE, MISSING, UNAVAILABLE, already in that order),
---   burst   = SetTracker burst rows {buffId,name,icon,bagCount},
+--   burst   = SetTracker burst rows {buffId,name,icon,bagCount,unavailable},
 --   empty   = true when the active set has neither picks nor burst buffs (or there is no set),
 --   badge   = SetTracker missingCount (MISSING rows + tracked burst with no bags),
 --   tooltip = { setName, progress = percentOfMax (0..100), missing = { names... } },
 -- }
--- tooltip.missing: names of MISSING rows, then of burst buffs with bagCount 0.
+-- tooltip.missing: names of MISSING rows, then of available burst buffs with bagCount 0.
 --
 -- valueText format (FormatFx): "+25 Agility, +2% Critical strike". Entries follow the
 -- canonical stat order, then percent keys; "%" for CRIT/HIT/SPELL_*, and *_PCT keys
@@ -126,7 +126,7 @@ function VM:Build(state, catalog)
     if r.status == "MISSING" then names[#names + 1] = r.name end
   end
   for _, b in ipairs(tracked.burst) do
-    if b.bagCount == 0 then names[#names + 1] = b.name end
+    if b.bagCount == 0 and not b.unavailable then names[#names + 1] = b.name end
   end
 
   return {

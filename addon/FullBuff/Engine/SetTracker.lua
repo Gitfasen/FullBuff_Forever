@@ -7,9 +7,19 @@ ns.SetTracker = SetTracker
 
 local RANK = { ACTIVE = 1, MISSING = 2, UNAVAILABLE = 3 }
 
+local function slotName(slots, slot)
+  local n = slots[slot] and slots[slot].name
+  if not n then return tostring(slot) end
+  local lang = ns.GetLanguage and ns.GetLanguage() or "en"
+  return n[lang] or n.en or tostring(slot)
+end
+
 -- Evaluate(state, catalog, set) ->
---   { rows = {{slot, buffId, name, icon, valueText, status, bagCount}},
---     burst = {{buffId, name, icon, bagCount}}, missingCount, unavailableCount }
+--   { rows = {{slot, slotName, buffId, name, icon, valueText, status, bagCount}},
+--     burst = {{buffId, name, icon, bagCount, unavailable}}, missingCount, unavailableCount }
+-- slotName: the slot's localized name (the slot key when unknown).
+-- A burst buff that is unknown, has no catalog entry or is UNAVAILABLE is marked
+-- unavailable and not counted as missing.
 -- `state` is unused (kept for API symmetry with MaxCalc:Compute). Picks are read
 -- through ns.Sets:Resolve (one row per buff, under its current slot).
 function SetTracker:Evaluate(state, catalog, set)
@@ -38,7 +48,7 @@ function SetTracker:Evaluate(state, catalog, set)
         missing = missing + 1
       end
       rows[#rows + 1] = {
-        slot = slot, buffId = buffId,
+        slot = slot, slotName = slotName(slots, slot), buffId = buffId,
         name = buff and buff.name or ("#" .. tostring(buffId)),
         icon = VM.IconFor(e and e.rankSpell),
         valueText = (e and status ~= "UNAVAILABLE") and VM.FormatFx(e.fx) or "",
@@ -59,13 +69,15 @@ function SetTracker:Evaluate(state, catalog, set)
   local burst = {}
   for _, buffId in ipairs(set and set.burst or {}) do
     local buff, e = buffs[buffId], byId[buffId]
+    local gone = not buff or not e or e.status == "UNAVAILABLE"
     local n = buff and ns.Bags:CountBuff(buff) or 0
-    if n == 0 then missing = missing + 1 end
+    if n == 0 and not gone then missing = missing + 1 end
     burst[#burst + 1] = {
       buffId = buffId,
       name = buff and buff.name or ("#" .. tostring(buffId)),
       icon = VM.IconFor(e and e.rankSpell),
       bagCount = n,
+      unavailable = gone or nil,
     }
   end
 
