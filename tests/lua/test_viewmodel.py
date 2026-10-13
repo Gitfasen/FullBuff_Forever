@@ -45,11 +45,11 @@ def items(vm):
             for s in vm["sections"].values()}
 
 
-def test_sections_missing_first(addon):
+def test_sections_active_then_recommended_then_rest(addon):
     a, vm = build(addon)
     it = items(vm)
-    # CAN_ADD first, then UNAVAILABLE, ACTIVE last
-    assert [i[0] for i in it["CLASS"]] == [2, 3, 1]
+    # ACTIVE first, then recommended CAN_ADD, then other CAN_ADD, UNAVAILABLE last
+    assert [i[0] for i in it["CLASS"]] == [1, 2, 3]
     # within CAN_ADD the recommended one leads (Apple, recommended, is listed before Berry)
     assert [i[0] for i in it["FOOD"]] == [4, 5]
     assert it["FOOD"][0][2] is True and it["FOOD"][1][2] is False

@@ -11,6 +11,7 @@ local WIDTH, HEIGHT = 340, 440
 local STAT_H, SECTION_H, ITEM_H = 16, 22, 32
 
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:0|t" -- raid-target star: exists in every client
+local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t" -- ready-check tick: already on the character
 local frame, scroll, content, staleText, titleText, headerText, onlyMissing, onlyMissingLabel
 local pool, used = {}, 0
 
@@ -20,7 +21,7 @@ local function db()
 end
 
 local COLORS = {
-  ACTIVE = { 0.55, 0.55, 0.55 }, -- dimmed: already have it
+  ACTIVE = { 0.25, 1, 0.25 }, -- green: already have it
   CAN_ADD = { 1, 1, 1 },
   UNAVAILABLE = { 0.5, 0.5, 0.5 },
   RECOMMENDED = { 1, 0.82, 0 },
@@ -161,8 +162,14 @@ function Popover:Refresh()
         b.sub:SetPoint("BOTTOMRIGHT", -4, 4)
         b.name:SetWordWrap(false)
         b.sub:SetWordWrap(false)
-        b:SetAlpha(it.status == "ACTIVE" and 0.7 or 1)
-        b.name:SetText((it.recommended and (STAR .. " ") or "") .. it.name)
+        b:SetAlpha(1)
+        local mark = ""
+        if it.status == "ACTIVE" then
+          mark = CHECK .. " "
+        elseif it.recommended then
+          mark = STAR .. " "
+        end
+        b.name:SetText(mark .. it.name)
         b.sub:SetText(it.valueText)
         local c = COLORS[it.status] or COLORS.CAN_ADD
         if it.status == "CAN_ADD" and it.recommended then c = COLORS.RECOMMENDED end

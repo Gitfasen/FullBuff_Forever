@@ -152,9 +152,31 @@ def test_popover_rows(addon):
     names = list(a.eval("__ns.__names").values())
     subs = list(a.eval("__ns.__subs").values())
     star = "|TInterface" + BS + "TargetingFrame" + BS + "UI-RaidTargetingIcon_1:0|t"
-    # CAN_ADD first; both are the best in their (own) group, so both carry the raid-star marker
-    assert names == [star + " Bravo", star + " Alpha"]
-    assert subs[0] == "+20 Strength, +2% Critical strike"
+    check = "|TInterface" + BS + "RaidFrame" + BS + "ReadyCheck-Ready:0|t"
+    # ACTIVE first with a check mark (no star even though it is best in its group),
+    # then the recommended CAN_ADD with the star
+    assert names == [check + " Alpha", star + " Bravo"]
+    assert subs[1] == "+20 Strength, +2% Critical strike"
+
+
+def test_active_row_highlighted_not_dimmed(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.UI.Popover:Toggle()")
+    a.run("""
+      local lines, used = ns.UI.Popover:GetLines()
+      for i = 1, used do
+        local b = lines[i]
+        if b.fbKind == "item" and b.fbId == 1 then
+          __ns.__alpha = b:GetAlpha()
+          __ns.__r, __ns.__g, __ns.__b = b.name:GetTextColor()
+        end
+      end
+    """)
+    assert a.eval("__ns.__alpha") == 1
+    r, g, b = a.eval("__ns.__r"), a.eval("__ns.__g"), a.eval("__ns.__b")
+    assert g > r and g > b  # green: "already have it"
 
 
 def test_libs_do_not_reference_questie():

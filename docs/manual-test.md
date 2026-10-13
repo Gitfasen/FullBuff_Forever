@@ -16,6 +16,7 @@ Install: `powershell -ExecutionPolicy Bypass -File tools/install_junction.ps1` (
 - [ ] The libraries load without `LibStub`/`HereBeDragonsQuestie` errors, also when Questie is enabled (pending user verification)
 - [ ] The Settings panel opens from both the launcher right-click and the addon compartment entry (pending user verification)
 - [ ] The raid-star marker texture renders (pending user verification)
+- [ ] Buffs already on the character show a green ready-check tick and green name, listed at the top of their category; recommended ones (star) follow, then the rest (pending user verification)
 - [ ] Ukrainian text renders with no missing glyphs (boxes or question marks) (pending user verification)
 
 ## 3. Launcher and popover

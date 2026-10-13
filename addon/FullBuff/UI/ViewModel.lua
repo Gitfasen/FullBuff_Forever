@@ -12,7 +12,7 @@ local _, ns = ...
 --   badge   = number of recommended buffs that can still be added (non-burst),
 --   tooltip = { progress = percentOfMax (0..100), missing = { names... } },
 -- }
--- Section items are ordered CAN_ADD (recommended first), UNAVAILABLE, ACTIVE.
+-- Section items are ordered ACTIVE, CAN_ADD (recommended first), UNAVAILABLE.
 -- activeCount/total ignore the "only missing" filter; total excludes UNAVAILABLE.
 -- Sections of categories with ns.DB.hiddenCats[cat] == true are omitted from `sections`
 -- only; MaxCalc, the badge and the tooltip still count them (hiding is display-only).
@@ -26,7 +26,7 @@ ns.ViewModel = VM
 
 local MAX_FX = 4
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
-local STATUS_RANK = { CAN_ADD = 1, UNAVAILABLE = 2, ACTIVE = 3 }
+local STATUS_RANK = { ACTIVE = 1, CAN_ADD = 2, UNAVAILABLE = 3 }
 local PERCENT_STAT = { CRIT = true, SPELL_CRIT = true, HIT = true, SPELL_HIT = true }
 local PCT_ORDER = { "STAT_PCT", "STR_PCT", "AGI_PCT", "STA_PCT", "INT_PCT", "SPI_PCT", "ARMOR_PCT" }
 

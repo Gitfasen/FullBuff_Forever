@@ -67,6 +67,13 @@ function frameMethods:SetScale(v) self.__scale = v end
 function frameMethods:SetText(t) self.__text = t end
 function frameMethods:SetTexture(t) self.__texture = t end
 function frameMethods:GetText() return self.__text end
+function frameMethods:SetAlpha(a) self.__alpha = a end
+function frameMethods:GetAlpha() return self.__alpha or 1 end
+function frameMethods:SetTextColor(r, g, b, a) self.__color = { r, g, b, a } end
+function frameMethods:GetTextColor()
+  local c = self.__color or { 1, 1, 1, 1 }
+  return c[1], c[2], c[3], c[4] or 1
+end
 function frameMethods:SetChecked(v) self.__checked = v and true or false end
 function frameMethods:GetChecked() return self.__checked end
 function frameMethods:GetStringWidth() return 50 end
