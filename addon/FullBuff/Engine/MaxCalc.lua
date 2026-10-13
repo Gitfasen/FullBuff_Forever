@@ -60,30 +60,50 @@ end
 -- Compute(state, catalog) runs Scoring:MarkRecommended(catalog, state) (mutates
 -- entry.recommended) and returns { rows = { {stat, current, max, diff} },
 --   missing = Entry[], missingCount, percentOfMax, stale }
--- With `picks` ({[excl]=buffId|false}) the chosen entry of a group is the picked
--- one (ACTIVE or CAN_ADD, not burst); false/absent means no chosen entry.
+-- With `picks` ({[slot]=buffId|false}) the chosen entries are those whose buff id is
+-- picked (ACTIVE or CAN_ADD, not burst), grouped by the entry's current excl (the
+-- slot key is ignored, so a rebuild that moved a buff still works). If two picked
+-- entries share a group the higher Score wins (tie: lower id).
 function MaxCalc:Compute(state, catalog, picks)
   local reported = state and state.stats or {}
   catalog = catalog or {}
   ns.Scoring:MarkRecommended(catalog, state)
+  local pickedId
+  if picks then
+    pickedId = {}
+    for _, id in pairs(picks) do
+      if id then pickedId[id] = true end
+    end
+  end
   local all, chosen, chosenGroup = {}, {}, {}
+  local best = {}
   for key, list in pairs(catalog) do
     if key ~= "order" and type(list) == "table" then
       for _, e in ipairs(list) do
         all[#all + 1] = e
-        local isChosen
-        if picks then
-          isChosen = e.excl ~= nil and picks[e.excl] == e.id and not e.burst
-            and (e.status == "ACTIVE" or e.status == "CAN_ADD")
-        else
-          isChosen = e.recommended and not e.burst and e.status ~= "UNAVAILABLE"
-        end
-        if isChosen then
+        if pickedId then
+          if pickedId[e.id] and not e.burst and (e.status == "ACTIVE" or e.status == "CAN_ADD") then
+            local g = groupKey(e)
+            local cur = best[g]
+            if not cur then
+              best[g] = { e = e, score = ns.Scoring:Score(e.fx or {}, state) }
+            else
+              local sc = ns.Scoring:Score(e.fx or {}, state)
+              if sc > cur.score or (sc == cur.score and (e.id or 0) < (cur.e.id or 0)) then
+                best[g] = { e = e, score = sc }
+              end
+            end
+          end
+        elseif e.recommended and not e.burst and e.status ~= "UNAVAILABLE" then
           chosen[#chosen + 1] = e
           chosenGroup[groupKey(e)] = true
         end
       end
     end
+  end
+  for g, b in pairs(best) do
+    chosen[#chosen + 1] = b.e
+    chosenGroup[g] = true
   end
   -- An active lower rank (status CAN_ADD, activeFx set: an upgrade) is active too.
   -- Only active non-burst buffs whose group has a chosen entry are removed from

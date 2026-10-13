@@ -379,3 +379,38 @@ def test_empty_picks_max_equals_current(addon):
       E(2, "ELIXIR", "C", "elixir", {AGI=20}),""", "{}")
     assert all(c == m for c, m in rows.values())
     assert res["missingCount"] == 0
+
+
+def test_pick_matched_by_id_not_slot_key(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),""", "{oldslot=1}")
+    assert rows["STR"] == (100, 110)
+
+
+def test_two_picks_in_one_group_best_counts(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{s1=2, s2=1}")
+    assert rows["STR"] == (100, 110)
+
+
+def test_picked_active_entry_max_equals_current(addon):
+    rows, res = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),""", "{food=1}")
+    assert rows["STR"] == (100, 100)
+    assert res["missingCount"] == 0
+
+
+def test_picked_upgrade_replaces_active_lower_rank(addon):
+    # lower rank active {STR=4} (in the 100); rank up fx {STR=10}: 100 - 4 + 10
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="FOOD", name="A", excl="food", fx={STR=10}, activeFx={STR=4}, status="CAN_ADD"},""", "{food=1}")
+    assert rows["STR"] == (100, 106)
+
+
+def test_active_in_group_of_other_pick_is_swapped(addon):
+    # active A {STR=10} is inside the 100; picking B {STR=5}: 100 - 10 + 5
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{food=2}")
+    assert rows["STR"] == (100, 95)

@@ -10,6 +10,7 @@ local RANK = { ACTIVE = 1, MISSING = 2, UNAVAILABLE = 3 }
 -- Evaluate(state, catalog, set) ->
 --   { rows = {{slot, buffId, name, icon, valueText, status, bagCount}},
 --     burst = {{buffId, name, icon, bagCount}}, missingCount, unavailableCount }
+-- `state` is unused (kept for API symmetry with MaxCalc:Compute).
 function SetTracker:Evaluate(state, catalog, set)
   local VM = ns.ViewModel
   local byId = {}
