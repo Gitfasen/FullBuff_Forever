@@ -82,3 +82,17 @@ Runtime ratios (verify per class):
 - [ ] Melee crit per AGI (pending user verification)
 - [ ] Spell crit per INT (pending user verification)
 - [ ] Hunter ranged attack power per AGI = 2 (pending user verification)
+
+## 8. Buff sets
+
+- [ ] In options, Sets: New, Copy, Rename (Enter commits, Escape cancels; the box sits on its own row) and Delete (asks for confirmation) work; New and Copy switch to the new set (pending user verification)
+- [ ] Binding a set to a specialization (1/2/3/None) and then changing talents or specialization switches the active set automatically (pending user verification)
+- [ ] The popover lists only the buffs of the active set, with buffs already on the character (green tick) first (pending user verification)
+- [ ] The set button in the popover header cycles through the sets (pending user verification)
+- [ ] In the editor the recommended option shows the raid star and the active one the green tick; picking an option changes the popover and the set maximum (pending user verification)
+- [ ] Bag counts of tracked potions and trinkets update after using a potion (pending user verification)
+- [ ] An elixir or flask in the bags shows "in bags xN" in its row (pending user verification)
+- [ ] A level-gated pick in a set shows the unavailable marker in the popover and greyed in the editor; a tracked burst item that is no longer obtainable is greyed with the unavailable label (pending user verification)
+- [ ] With an empty set the popover button opens the options (pending user verification)
+- [ ] With the options open, levelling up or changing buffs refreshes the slot list without reopening (pending user verification)
+

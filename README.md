@@ -35,6 +35,10 @@ In-game checks that cannot be automated are listed in `docs/manual-test.md`.
 - `/fullbuff debug` lists unknown auras and the stale state
 - `/fullbuff reset` resets the launcher position and collapsed sections
 
+## Buff sets
+
+A set is a named list of buffs for one situation (for example a raid set and a solo set). Each conflict slot (Intellect, Stamina, flask, food and so on) holds at most one pick, and potions and trinkets are tracked by how many you carry. The popover shows only the active set, with buffs you already have first. Open the settings panel, Sets, to create, copy, rename and delete sets, pick one option per slot (the raid star marks the recommended one, the green tick the one already on you) and choose which burst items to track. A set can be bound to a talent specialization, and then it activates automatically when you switch specialization; the set button in the popover header cycles through the sets by hand. The set maximum counts only the picks of the active set.
+
 ## How the maximum is counted
 
 The maximum takes the best buff of every stacking group. Consumables follow a vanilla-style model: one flask, one temporary weapon enchant (oils, stones, imbues, including self-only class imbues such as Rockbiter Weapon), one Well Fed food, and one elixir and one scroll per dominant stat (e.g. one Agility elixir, one Spell damage elixir). Explicit groups in `tools/curated.yaml` (`excl_merge`) override this, e.g. the Rumsey Rum drinks (which stack with Well Fed), the scroll familiars and Spirit of Zanza.
