@@ -1,0 +1,132 @@
+"""Read QuestieDB_Forever.toc and attach item acquisition sources to buffs."""
+import base64
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import cbor2
+
+from tools.model import Buff, Source
+
+FIELD_NAMES = {
+    "Item": {1: "name", 2: "npcDrops", 3: "objectDrops", 6: "questRewards", 14: "vendors"},
+    "Npc": {1: "name", 7: "spawns", 14: "subName"},
+    "Object": {1: "name", 4: "spawns"},
+    "Quest": {1: "name"},
+}
+
+LINE_RE = re.compile(r"^## X-(Item|Npc|Object|Quest)-(\d+)-(S|\d+)(?:-(\d+))?: (\S+)\s*$")
+CHUNK_RE = re.compile(r"^~(\d+)~$")
+DROP_CAP = 5
+
+
+@dataclass
+class QuestieData:
+    items: dict[int, dict] = field(default_factory=dict)
+    npcs: dict[int, dict] = field(default_factory=dict)
+    objects: dict[int, dict] = field(default_factory=dict)
+    quests: dict[int, dict] = field(default_factory=dict)
+
+
+def _decode(value: str):
+    return cbor2.loads(base64.b64decode(value))
+
+
+def _text(v):
+    return v.decode("utf-8", "replace") if isinstance(v, bytes) else v
+
+
+def load_questie(toc_path: Path) -> QuestieData:
+    # key -> raw value; chunk keys (<key>-<n>) are kept in `chunks`.
+    values: dict[tuple[str, int, str], str] = {}
+    chunks: dict[tuple[str, int, str, int], str] = {}
+    with open(toc_path, encoding="utf-8") as f:
+        for line in f:
+            m = LINE_RE.match(line)
+            if not m:
+                continue
+            entity, eid, fld, chunk, val = m.groups()
+            if chunk is None:
+                values[(entity, int(eid), fld)] = val
+            else:
+                chunks[(entity, int(eid), fld, int(chunk))] = val
+
+    targets = {"Item": {}, "Npc": {}, "Object": {}, "Quest": {}}
+    for (entity, eid, fld), val in values.items():
+        cm = CHUNK_RE.match(val)
+        if cm:
+            val = "".join(chunks[(entity, eid, fld, i)] for i in range(1, int(cm.group(1)) + 1))
+        names = FIELD_NAMES[entity]
+        row = targets[entity].setdefault(eid, {})
+        if fld == "S":
+            scalar = _decode(val)
+            # Dense rows are positional lists (1-indexed, None = absent).
+            pairs = enumerate(scalar, 1) if isinstance(scalar, list) else scalar.items()
+            for idx, v in pairs:
+                if isinstance(idx, int) and idx in names and v is not None:
+                    row[names[idx]] = _text(v)
+        elif int(fld) in names:
+            decoded = _decode(val)
+            if isinstance(decoded, list) and names[int(fld)] == "spawns":
+                # Sparse zone-keyed table stored as a positional list (zoneId = index).
+                decoded = {i: v for i, v in enumerate(decoded, 1) if v is not None}
+            row[names[int(fld)]] = decoded
+    return QuestieData(items=targets["Item"], npcs=targets["Npc"],
+                       objects=targets["Object"], quests=targets["Quest"])
+
+
+def area_to_uimap(rows: list[dict]) -> dict[int, int]:
+    best: dict[int, tuple[int, int]] = {}
+    for r in rows:
+        area = int(r["AreaID"])
+        if area == 0:
+            continue
+        order = int(r["OrderIndex"])
+        if area not in best or order < best[area][0]:
+            best[area] = (order, int(r["UiMapID"]))
+    return {a: m for a, (_, m) in best.items()}
+
+
+def _locations(spawns, amap, first_per_zone=False):
+    out = []
+    for zone, points in (spawns or {}).items():
+        map_id = amap.get(int(zone))
+        if map_id is None:
+            continue
+        for pt in points[:1] if first_per_zone else points:
+            out.append((map_id, round(pt[0] / 100, 4), round(pt[1] / 100, 4)))
+    return out
+
+
+def attach_sources(buffs: dict[int, Buff], q: QuestieData, amap: dict[int, int]) -> None:
+    for buff in buffs.values():
+        for item_id in buff.items:
+            item = q.items.get(item_id)
+            if not item:
+                continue
+            for npc_id in item.get("vendors", []):
+                npc = q.npcs.get(npc_id)
+                if not npc:
+                    continue
+                for map_id, x, y in _locations(npc.get("spawns"), amap, first_per_zone=True):
+                    buff.sources.append(Source("vendor", npc["name"], map_id, x, y))
+
+            drops: list[Source] = []
+            for ids, table in ((item.get("npcDrops", []), q.npcs),
+                               (item.get("objectDrops", []), q.objects)):
+                for eid in ids:
+                    ent = table.get(eid)
+                    if not ent:
+                        continue
+                    for map_id, x, y in _locations(ent.get("spawns"), amap):
+                        drops.append(Source("drop", ent["name"], map_id, x, y))
+            if len(drops) > DROP_CAP:
+                extra = len(drops) - DROP_CAP
+                drops = drops[:DROP_CAP]
+                drops[-1].note = f"+{extra} more"
+            buff.sources.extend(drops)
+
+            for qid in item.get("questRewards", []):
+                quest = q.quests.get(qid)
+                if quest and quest.get("name"):
+                    buff.sources.append(Source("quest", quest["name"]))
