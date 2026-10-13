@@ -18,6 +18,7 @@ FIELD_NAMES = {
 LINE_RE = re.compile(r"^## X-(Item|Npc|Object|Quest)-(\d+)-(S|\d+)(?:-(\d+))?: (\S+)\s*$")
 CHUNK_RE = re.compile(r"^~(\d+)~$")
 DROP_CAP = 5
+MAX_PLAYER_LEVEL = 60  # acquisition levels never exceed the level cap (raid bosses are 61-63)
 
 
 @dataclass
@@ -211,7 +212,7 @@ def item_acquisition_level(item: dict | None, q: QuestieData) -> int | None:
         levels.append(int((q.quests.get(qid) or {}).get("requiredLevel") or 0))
     for nid in item.get("npcDrops") or []:
         levels.append(int((q.npcs.get(nid) or {}).get("minLevel") or 0))
-    return min(levels) if levels else None
+    return min(min(levels), MAX_PLAYER_LEVEL) if levels else None
 
 
 def buff_acquisition_level(buff: Buff, q: QuestieData) -> int:

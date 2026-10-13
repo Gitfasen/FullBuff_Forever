@@ -246,3 +246,8 @@ def test_loads_quest_required_level_and_npc_min_level(tmp_path):
     q = load_questie(toc)
     assert q.quests[9]["requiredLevel"] == 47
     assert q.npcs[4]["minLevel"] == 52
+
+
+def test_acquisition_capped_at_max_player_level():
+    q = QuestieData(items={5: {"npcDrops": [7]}}, npcs={7: {"name": "Boss", "minLevel": 63}})
+    assert _acq([5], q) == 60
