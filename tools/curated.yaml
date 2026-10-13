@@ -1,0 +1,120 @@
+# Curated overrides for the FullBuff build pipeline (see tools/curated.py).
+
+# World buffs not derivable from item data. Sources with npc/object resolve to coordinates.
+include:
+  - id: 22888  # Rallying Cry of the Dragonslayer
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14392}
+      - {kind: npc, npc: 14721}
+  - id: 16609  # Warchief's Blessing
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 4949}
+  - id: 15366  # Songflower Serenade
+    cat: WORLD
+    sources:
+      - {kind: object, object: 164886}
+  - id: 24425  # Spirit of Zandalar
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14875}
+  - id: 22818  # Mol'dar's Moxie
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 11501}
+  - id: 22817  # Fengus' Ferocity
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 11501}
+  - id: 22820  # Slip'kik's Savvy
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 11501}
+  - id: 23735  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23736  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23737  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23738  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23766  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23767  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23768  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+  - id: 23769  # Sayge's Dark Fortune
+    cat: WORLD
+    sources:
+      - {kind: npc, npc: 14822}
+
+exclude: []
+
+override: {}
+
+# Buffs in one list share one exclusivity group (key = first name's current excl).
+excl_merge:
+  - ["Power Word: Fortitude", "Prayer of Fortitude"]
+  - ["Arcane Intellect", "Arcane Brilliance"]
+  - ["Mark of the Wild", "Gift of the Wild"]
+  - ["Blessing of Kings", "Greater Blessing of Kings"]
+  - ["Blessing of Might", "Greater Blessing of Might"]
+  - ["Blessing of Wisdom", "Greater Blessing of Wisdom"]
+  - ["Blessing of Salvation", "Greater Blessing of Salvation"]
+  - ["Divine Spirit", "Prayer of Spirit"]
+  - ["Shadow Protection", "Prayer of Shadow Protection"]
+
+# Per class: 3 spec maps in talent-tab order.
+weights:
+  WARRIOR:
+    - {AP: 1, CRIT: 20, HIT: 18, HP: 0.02}
+    - {AP: 1, CRIT: 20, HIT: 18, HP: 0.02}
+    - {HP: 0.5, ARMOR: 0.1, AP: 0.3, HIT: 5, CRIT: 5}
+  PALADIN:
+    - {HEAL: 1, MP5: 2.5, MANA: 0.05, SPELL_CRIT: 8, SPI: 0.2}
+    - {HP: 0.5, ARMOR: 0.1, SPELL_DMG: 0.5, HIT: 5}
+    - {AP: 1, CRIT: 18, HIT: 15, SPELL_DMG: 0.3}
+  HUNTER:
+    - {RAP: 1, CRIT: 18, HIT: 15, AP: 0.1}
+    - {RAP: 1, CRIT: 18, HIT: 15, AP: 0.1}
+    - {RAP: 1, CRIT: 18, HIT: 15, AP: 0.1}
+  ROGUE:
+    - {AP: 1, CRIT: 18, HIT: 18}
+    - {AP: 1, CRIT: 18, HIT: 18}
+    - {AP: 1, CRIT: 18, HIT: 18}
+  PRIEST:
+    - {HEAL: 1, MP5: 2.5, MANA: 0.05, SPI: 0.4, SPELL_CRIT: 6}
+    - {HEAL: 1, MP5: 2.5, MANA: 0.05, SPI: 0.4, SPELL_CRIT: 6}
+    - {SPELL_DMG: 1, SPELL_HIT: 12, SPELL_CRIT: 8, MANA: 0.03, SPI: 0.2}
+  SHAMAN:
+    - {SPELL_DMG: 1, SPELL_CRIT: 10, SPELL_HIT: 12, MP5: 1.5, MANA: 0.03}
+    - {AP: 1, CRIT: 18, HIT: 15}
+    - {HEAL: 1, MP5: 2.5, MANA: 0.05, SPELL_CRIT: 6}
+  MAGE:
+    - {SPELL_DMG: 1, SPELL_CRIT: 10, SPELL_HIT: 13, MANA: 0.03, SPI: 0.1}
+    - {SPELL_DMG: 1, SPELL_CRIT: 10, SPELL_HIT: 13, MANA: 0.03, SPI: 0.1}
+    - {SPELL_DMG: 1, SPELL_CRIT: 10, SPELL_HIT: 13, MANA: 0.03, SPI: 0.1}
+  WARLOCK:
+    - {SPELL_DMG: 1, SPELL_CRIT: 8, SPELL_HIT: 13, HP: 0.02, MANA: 0.03}
+    - {SPELL_DMG: 1, SPELL_CRIT: 8, SPELL_HIT: 13, HP: 0.02, MANA: 0.03}
+    - {SPELL_DMG: 1, SPELL_CRIT: 8, SPELL_HIT: 13, HP: 0.02, MANA: 0.03}
+  DRUID:
+    - {SPELL_DMG: 1, SPELL_CRIT: 10, SPELL_HIT: 12, MANA: 0.03}
+    - {AP: 1, CRIT: 18, HIT: 15, HP: 0.1, ARMOR: 0.05}
+    - {HEAL: 1, MP5: 2.5, SPI: 0.4, MANA: 0.05}
