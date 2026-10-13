@@ -19,3 +19,4 @@ Data\Sources.lua
 Data\Weights.lua
 Engine\PlayerState.lua
 Engine\Catalog.lua
+Engine\Scoring.lua
