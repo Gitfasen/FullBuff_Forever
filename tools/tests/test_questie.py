@@ -1,9 +1,10 @@
 import base64
 
 import cbor2
+import pytest
 
 from tools.model import Buff, Source
-from tools.sources.questie import QuestieData, area_to_uimap, attach_sources, load_questie
+from tools.sources.questie import QuestieData, area_to_uimap, attach_sources, load_area_map, load_questie
 
 
 def b64(obj) -> str:
@@ -96,3 +97,62 @@ def test_drop_sources_capped_at_five():
     assert drops[-1].note == "+2 more"
     quests = [s for s in b.sources if s.kind == "quest"]
     assert quests == [Source(kind="quest", name="Quest Name")]
+
+
+def test_load_area_map_questie_wins(tmp_path):
+    d = tmp_path / "support" / "Forever" / "Zones"
+    d.mkdir(parents=True)
+    (d / "areaIdToUiMapId.lua").write_text(
+        "local x = 1\n"
+        "Z.override = [[return {\n    [0] = 0, -- failsafe\n    [20] = 0, -- suppress\n"
+        "    [30] = 999, -- alias\n}]]\n"
+        "Z.base = [[return {\n    [10] = 111,\n    [20] = 222,\n    [30] = 333,\n}]]\n",
+        encoding="utf-8")
+    rows = [{"AreaID": "10", "UiMapID": "5", "OrderIndex": "0"},
+            {"AreaID": "40", "UiMapID": "44", "OrderIndex": "0"}]
+    assert load_area_map(tmp_path, rows) == {10: 111, 30: 999, 40: 44}
+
+
+def test_invalid_points_skipped_before_first_and_cap():
+    q = QuestieData(
+        items={5: {"name": "E", "vendors": [100]}},
+        npcs={100: {"name": "V", "spawns": {1: [[-1, -1], [10, 20]]}}},
+        objects={}, quests={},
+    )
+    b = buff([5])
+    attach_sources({1: b}, q, {1: 7})
+    assert b.sources == [Source("vendor", "V", 7, 0.1, 0.2)]
+
+
+def test_dedupe_and_idempotent():
+    q = QuestieData(
+        items={5: {"name": "A", "vendors": [100]}, 6: {"name": "B", "vendors": [100]}},
+        npcs={100: {"name": "V", "spawns": {1: [[10, 20]]}}}, objects={}, quests={},
+    )
+    b = buff([5, 6])
+    attach_sources({1: b}, q, {1: 7})
+    attach_sources({1: b}, q, {1: 7})
+    assert len(b.sources) == 1
+
+
+def test_unnamed_entities_skipped():
+    q = QuestieData(
+        items={5: {"name": "A", "vendors": [100], "npcDrops": [101], "objectDrops": [2]}},
+        npcs={100: {"spawns": {1: [[10, 20]]}}, 101: {"spawns": {1: [[10, 20]]}}},
+        objects={2: {"spawns": {1: [[1, 2]]}}}, quests={},
+    )
+    b = buff([5])
+    attach_sources({1: b}, q, {1: 7})
+    assert b.sources == []
+
+
+def test_missing_chunk_part_raises_clear_error(tmp_path):
+    toc = write_toc(tmp_path, ["## X-Npc-3-7: ~3~", "## X-Npc-3-7-1: AAAA", "## X-Npc-3-7-3: AAAA"])
+    with pytest.raises(ValueError, match=r"X-Npc-3-7 declares 3 parts but part 2 is missing"):
+        load_questie(toc)
+
+
+def test_undecodable_value_raises_clear_error(tmp_path):
+    toc = write_toc(tmp_path, ["## X-Npc-3-7: !!!!"])
+    with pytest.raises(ValueError, match="X-Npc-3-7"):
+        load_questie(toc)
