@@ -1,0 +1,19 @@
+{
+ "items": [
+  {
+   "i": 268880,
+   "n": "\"Secret\" Bait",
+   "t": "Use: When applied to your fishing pole, increases Fishing by 25 for 10 min."
+  },
+  {
+   "i": 4392,
+   "n": "Advanced Target Dummy",
+   "t": "Use: Drops a target dummy on the ground that attracts nearby monsters to attack it. Lasts for 15 seconds or until killed."
+  },
+  {
+   "i": 3825,
+   "n": "Elixir of Fortitude",
+   "t": "Use: Increases maximum health by 120 for 1 hr."
+  }
+ ]
+}
