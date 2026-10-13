@@ -60,7 +60,9 @@ end
 -- Compute(state, catalog) runs Scoring:MarkRecommended(catalog, state) (mutates
 -- entry.recommended) and returns { rows = { {stat, current, max, diff} },
 --   missing = Entry[], missingCount, percentOfMax, stale }
-function MaxCalc:Compute(state, catalog)
+-- With `picks` ({[excl]=buffId|false}) the chosen entry of a group is the picked
+-- one (ACTIVE or CAN_ADD, not burst); false/absent means no chosen entry.
+function MaxCalc:Compute(state, catalog, picks)
   local reported = state and state.stats or {}
   catalog = catalog or {}
   ns.Scoring:MarkRecommended(catalog, state)
@@ -69,7 +71,14 @@ function MaxCalc:Compute(state, catalog)
     if key ~= "order" and type(list) == "table" then
       for _, e in ipairs(list) do
         all[#all + 1] = e
-        if e.recommended and not e.burst and e.status ~= "UNAVAILABLE" then
+        local isChosen
+        if picks then
+          isChosen = e.excl ~= nil and picks[e.excl] == e.id and not e.burst
+            and (e.status == "ACTIVE" or e.status == "CAN_ADD")
+        else
+          isChosen = e.recommended and not e.burst and e.status ~= "UNAVAILABLE"
+        end
+        if isChosen then
           chosen[#chosen + 1] = e
           chosenGroup[groupKey(e)] = true
         end

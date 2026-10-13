@@ -324,3 +324,58 @@ def test_unreported_mp5_active_weaker_replaced_by_best(addon):
       E(3, "CLASS", "Other", "other", {MP5=5}, "ACTIVE", true),
     """)
     assert rows["MP5"] == (25, 35)
+
+
+# --- picks (buff sets) ---
+def compute_picks(addon, entries, picks):
+    a = addon()
+    a.run(WEIGHTS)
+    a.run("__ns.__st = %s" % make_state(active=(1,)))
+    a.run(ENTRY_FN + """
+local list = {%s}
+local cat = {order = {}}
+for _, e in ipairs(list) do
+  if not cat[e.cat] then cat[e.cat] = {}; table.insert(cat.order, e.cat) end
+  table.insert(cat[e.cat], e)
+end
+__ns.__res = ns.MaxCalc:Compute(__ns.__st, cat, %s)
+""" % (entries, picks))
+    res = a.eval("__ns.__res")
+    return {r["stat"]: (r["current"], r["max"]) for r in res["rows"].values()}, res
+
+
+def test_picks_override_recommendation(addon):
+    # A {STR=10} is recommended; picking B {STR=5}: STR 100 -> 105
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{food=2}")
+    assert rows["STR"] == (100, 105)
+
+
+def test_pick_not_used_keeps_active_buff(addon):
+    # active A {STR=10} is inside the 100; group set to false -> A stays, max == current
+    rows, res = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{food=false}")
+    assert rows["STR"] == (100, 100)
+    assert res["missingCount"] == 0
+
+
+def test_unavailable_pick_ignored(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "UNAVAILABLE"),""", "{food=1}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_burst_pick_ignored(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "CAN_ADD", true),""", "{food=1}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_empty_picks_max_equals_current(addon):
+    rows, res = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),
+      E(2, "ELIXIR", "C", "elixir", {AGI=20}),""", "{}")
+    assert all(c == m for c, m in rows.values())
+    assert res["missingCount"] == 0

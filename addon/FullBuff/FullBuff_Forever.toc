@@ -29,6 +29,7 @@ Engine\Catalog.lua
 Engine\Scoring.lua
 Engine\MaxCalc.lua
 Engine\Sets.lua
+Engine\SetTracker.lua
 
 Systems\MapPins.lua
 
