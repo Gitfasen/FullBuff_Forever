@@ -10,6 +10,7 @@ local FRAME_NAME = "FullBuffPopover"
 local WIDTH, HEIGHT = 340, 440
 local STAT_H, SECTION_H, ITEM_H = 16, 22, 32
 
+local STAR = "\226\152\133" -- U+2605 (black star), UTF-8 bytes
 local frame, scroll, content, staleText, titleText, headerText, onlyMissing, onlyMissingLabel
 local pool, used = {}, 0
 
@@ -19,7 +20,7 @@ local function db()
 end
 
 local COLORS = {
-  ACTIVE = { 0.4, 1, 0.4 },
+  ACTIVE = { 0.55, 0.55, 0.55 }, -- dimmed: already have it
   CAN_ADD = { 1, 1, 1 },
   UNAVAILABLE = { 0.5, 0.5, 0.5 },
   RECOMMENDED = { 1, 0.82, 0 },
@@ -70,6 +71,7 @@ local function takeLine(y, kind, height)
     pool[used] = b
   end
   b.fbKind, b.fbId, b.fbCat, b.fbName, b.fbRecommended = kind, nil, nil, nil, nil
+  b:SetAlpha(1)
   b:SetHeight(height)
   b:ClearAllPoints()
   b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
@@ -146,8 +148,13 @@ function Popover:Refresh()
         b.icon:SetTexture(it.icon)
         b.icon:Show()
         b.name:SetPoint("TOPLEFT", 34, -4)
+        b.name:SetPoint("TOPRIGHT", -4, -4)
         b.sub:SetPoint("BOTTOMLEFT", 34, 4)
-        b.name:SetText(it.name)
+        b.sub:SetPoint("BOTTOMRIGHT", -4, 4)
+        b.name:SetWordWrap(false)
+        b.sub:SetWordWrap(false)
+        b:SetAlpha(it.status == "ACTIVE" and 0.7 or 1)
+        b.name:SetText((it.recommended and (STAR .. " ") or "") .. it.name)
         b.sub:SetText(it.valueText)
         local c = COLORS[it.status] or COLORS.CAN_ADD
         if it.status == "CAN_ADD" and it.recommended then c = COLORS.RECOMMENDED end
@@ -241,6 +248,8 @@ local function create()
   end
   if not registered then table.insert(UISpecialFrames, FRAME_NAME) end
 end
+
+function Popover:GetLines() return pool, used end
 
 function Popover:Toggle()
   if not frame then create() end

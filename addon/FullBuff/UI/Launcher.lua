@@ -8,7 +8,7 @@ local Launcher = {}
 ns.UI.Launcher = Launcher
 
 local SIZE = 36
-local ICON = "Interface\Icons\Spell_Holy_WordFortitude"
+local ICON = "Interface\\Icons\\Spell_Holy_WordFortitude"
 local DEFAULT_POS = { point = "TOPRIGHT", relPoint = "TOPRIGHT", x = -220, y = -220 }
 local button, badgeText, icon
 
@@ -44,9 +44,9 @@ local function showTooltip(self)
   local L = ns.L
   GameTooltip:SetOwner(self, "ANCHOR_LEFT")
   GameTooltip:AddLine(L.TITLE)
-  GameTooltip:AddDoubleLine(L.TOOLTIP_PROGRESS, string.format("%d%%", vm.tooltip.progress + 0.5), 1, 1, 1, 1, 1, 1)
+  GameTooltip:AddDoubleLine(L.TOOLTIP_PROGRESS, string.format("%d%%", math.floor(vm.tooltip.progress + 0.5)), 1, 1, 1, 1, 1, 1)
   if #vm.tooltip.missing > 0 then
-    GameTooltip:AddLine(L.TOOLTIP_MISSING .. ":", 1, 0.82, 0)
+    GameTooltip:AddLine(string.format("%s: %d", L.TOOLTIP_MISSING, #vm.tooltip.missing), 1, 0.82, 0)
     for i, name in ipairs(vm.tooltip.missing) do
       if i > 10 then GameTooltip:AddLine("...", 0.7, 0.7, 0.7) break end
       GameTooltip:AddLine(name, 1, 1, 1)
@@ -81,13 +81,13 @@ function Launcher:Create()
   icon:SetPoint("TOPLEFT", 4, -4)
   icon:SetPoint("BOTTOMRIGHT", -4, 4)
   icon:SetTexture(ICON)
-  icon:SetMask("Interface\CharacterFrame\TempPortraitAlphaMask")
+  icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
 
   local border = button:CreateTexture(nil, "OVERLAY")
   border:SetAllPoints()
-  border:SetTexture("Interface\Minimap\MiniMap-TrackingBorder")
+  border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
   border:SetTexCoord(0, 0.6, 0, 0.6)
-  button:SetHighlightTexture("Interface\Minimap\UI-Minimap-ZoomButton-Highlight")
+  button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
   badgeText = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   badgeText:SetPoint("BOTTOMRIGHT", 2, -2)

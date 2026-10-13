@@ -21,7 +21,7 @@ local VM = {}
 ns.ViewModel = VM
 
 local MAX_FX = 4
-local QUESTION = "Interface\Icons\INV_Misc_QuestionMark"
+local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
 local STATUS_RANK = { CAN_ADD = 1, UNAVAILABLE = 2, ACTIVE = 3 }
 local PERCENT_STAT = { CRIT = true, SPELL_CRIT = true, HIT = true, SPELL_HIT = true }
 local PCT_ORDER = { "STAT_PCT", "STR_PCT", "AGI_PCT", "STA_PCT", "INT_PCT", "SPI_PCT", "ARMOR_PCT" }

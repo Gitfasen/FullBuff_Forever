@@ -64,6 +64,7 @@ function frameMethods:GetBottom() return 380 end
 function frameMethods:GetEffectiveScale() return 1 end
 function frameMethods:GetScale() return 1 end
 function frameMethods:SetText(t) self.__text = t end
+function frameMethods:SetTexture(t) self.__texture = t end
 function frameMethods:GetText() return self.__text end
 function frameMethods:SetChecked(v) self.__checked = v and true or false end
 function frameMethods:GetChecked() return self.__checked end
@@ -86,6 +87,11 @@ UIParent = newFrame("Frame", "UIParent")
 UISpecialFrames = {}
 GameTooltip = newFrame("GameTooltip", "GameTooltip")
 GameTooltip.__shown = false
+GameTooltip.__lines = {}
+GameTooltip.SetOwner = function(self, owner) self.__owner = owner; self.__lines = {} end
+GameTooltip.GetOwner = function(self) return self.__owner end
+GameTooltip.AddLine = function(self, t) self.__lines[#self.__lines + 1] = tostring(t) end
+GameTooltip.AddDoubleLine = function(self, a, b) self.__lines[#self.__lines + 1] = tostring(a) .. " | " .. tostring(b) end
 GetScreenWidth = function() return 1920 end
 GetScreenHeight = function() return 1080 end
 GetCursorPosition = function() return 0, 0 end

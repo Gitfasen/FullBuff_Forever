@@ -50,7 +50,7 @@ def test_sections_missing_first(addon):
     it = items(vm)
     # CAN_ADD first, then UNAVAILABLE, ACTIVE last
     assert [i[0] for i in it["CLASS"]] == [2, 3, 1]
-    # within CAN_ADD the recommended one leads (Apple recommended even though Berry... name order)
+    # within CAN_ADD the recommended one leads (Apple, recommended, is listed before Berry)
     assert [i[0] for i in it["FOOD"]] == [4, 5]
     assert it["FOOD"][0][2] is True and it["FOOD"][1][2] is False
     sec = {s["cat"]: s for s in vm["sections"].values()}
@@ -69,7 +69,6 @@ def test_only_missing_filter(addon):
     assert sec["FOOD"]["collapsed"] is True
     # activeCount/total are unaffected by the filter
     assert sec["CLASS"]["activeCount"] == 1 and sec["CLASS"]["total"] == 2
-    # a section with nothing left disappears
 
 
 def test_only_missing_drops_empty_sections(addon):
@@ -86,8 +85,8 @@ def test_badge_counts_can_add_non_burst(addon):
     a, vm = build(addon)
     # recommended CAN_ADD non-burst: Bravo (2) and Apple (4). Rage is burst, Alpha active.
     assert vm["badge"] == 2
-    assert [m for m in vm["tooltip"]["missing"].values()] == ["Apple", "Bravo"] or \
-           sorted(vm["tooltip"]["missing"].values()) == ["Apple", "Bravo"]
+    # MaxCalc order: category order (CLASS, FOOD)
+    assert list(vm["tooltip"]["missing"].values()) == ["Bravo", "Apple"]
     assert 0 <= vm["tooltip"]["progress"] <= 100
 
 
