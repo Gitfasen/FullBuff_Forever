@@ -89,6 +89,7 @@ L.DEBUG_STALE = "Data is stale: %s"
 L.DEBUG_YES = "yes"
 L.DEBUG_NO = "no"
 L.DEBUG_UNKNOWN_HEADER = "Unknown auras: %d"
+L.DEBUG_NO_BAG_API = "Bag API (C_Container) is not available: bag counts show 0."
 L.DEBUG_NONE = "No unknown auras."
 L.SETTINGS_UNAVAILABLE = "The settings panel is not available in this client."
 

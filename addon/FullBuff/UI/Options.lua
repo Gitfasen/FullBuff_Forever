@@ -615,7 +615,7 @@ local function layoutSets()
 end
 
 -- RefreshSets: re-lays out the Sets editor. Only while the panel is open; guarded
--- against re-entry (the first bag count may fire FULLBUFF_BAGS from inside).
+-- against re-entry (an event fired while laying out must not nest a second layout).
 function Options:RefreshSets()
   if not (built and root.fbOpened) or refreshingSets then return end
   refreshingSets = true

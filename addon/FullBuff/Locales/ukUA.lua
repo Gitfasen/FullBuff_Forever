@@ -89,6 +89,7 @@ L.DEBUG_STALE = "Дані застарілі: %s"
 L.DEBUG_YES = "так"
 L.DEBUG_NO = "ні"
 L.DEBUG_UNKNOWN_HEADER = "Невідомі аури: %d"
+L.DEBUG_NO_BAG_API = "API сумок (C_Container) недоступний: кількість у сумках показано як 0."
 L.DEBUG_NONE = "Невідомих аур немає."
 L.SETTINGS_UNAVAILABLE = "Панель налаштувань недоступна в цьому клієнті."
 

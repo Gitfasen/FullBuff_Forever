@@ -19,6 +19,7 @@ local function showDebug()
   local L = ns.L
   local state = ns.PlayerState:Get()
   say("FullBuff: " .. string.format(L.DEBUG_STALE, state.stale and L.DEBUG_YES or L.DEBUG_NO))
+  if ns.Bags.noContainerApi then say(L.DEBUG_NO_BAG_API) end
   local ids = {}
   for id in pairs(state.unknownAuras or {}) do ids[#ids + 1] = id end
   table.sort(ids)
