@@ -67,7 +67,7 @@ FullBuff/
     UI/          Launcher.lua, Popover.lua, DetailCard.lua, Options.lua
     Systems/     MapPins.lua
     Libs/        HereBeDragons-2.0, HereBeDragons-Pins-2.0
-  spec/          # busted tests for addon Lua with WoW API mocks
+  tests/lua/     # addon Lua tests (pytest + lupa, WoW API mocks)
   docs/
     superpowers/specs/
     manual-test.md
@@ -206,7 +206,7 @@ Own UI strings in `Locales/enUS.lua` and `Locales/ukUA.lua`; English is the fall
 ## 8. Testing
 
 - **Build tools (pytest):** stat normalization, noise filtering, stacking groups, curated merge, valid Lua output, using small CSV fixtures.
-- **Addon logic (Lua 5.1 + busted with WoW API mocks):** Catalog level/class/rank filtering, Scoring weights and best pick, MaxCalc subtraction/percent/derived stats, PlayerState behaviour in combat and with secret values.
+- **Addon logic (Lua 5.1 via the `lupa` Python package, driven by pytest, with WoW API mocks; no separate Lua toolchain needed):** Catalog level/class/rank filtering, Scoring weights and best pick, MaxCalc subtraction/percent/derived stats, PlayerState behaviour in combat and with secret values.
 - **In game (manual, `docs/manual-test.md`):** spec detection, maximum vs actually applied buffs on 2–3 classes, map pins, dragging, language switch. Percent-buff order and runtime ratios must be confirmed in game before the maximum is considered correct.
 
 ## 9. Out of scope for v1
