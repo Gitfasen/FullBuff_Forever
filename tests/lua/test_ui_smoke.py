@@ -305,3 +305,49 @@ def test_viewmodel_built_once_per_state_change(addon):
     a.run("ns.Options:SetShowAllStats(true)")
     assert a.eval("__builds") == 3
     assert a.errors() == []
+
+
+def test_popover_unavailable_burst_greyed_not_counted(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.CharDB.sets[1].burst = {6, 3, 404}; ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()")
+    burst = [l for l in popover_lines(a) if l["kind"] == "burst"]
+    assert [l["name"] for l in burst] == ["Rage", "Gone", "#404"]
+    for l in burst[1:]:
+        assert l["sub"] == "unavailable — pick a replacement in settings" and l["id"] is None
+        assert l["c2"] == ""
+    assert a.eval("ns.ViewModel:Get().badge") == 2  # Bravo + Rage only
+    assert list(a.eval("ns.ViewModel:Get().tooltip.missing").values()) == ["Bravo", "Rage"]
+    assert a.errors() == []
+
+
+def test_popover_duplicate_row_names_show_slot(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("""
+      ns.Slots = {s1={order=1, name={en='Slot one', uk='Слот один'}}, s2={order=2, name={en='Slot two', uk='Слот два'}}}
+      ns.Buffs[2].name = 'Alpha'; ns.Buffs[2].bags = 0
+      ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()""")
+    items = [l for l in popover_lines(a) if l["kind"] == "item"]
+    assert items[0]["sub"] == "+10 Strength  ·  Slot one"
+    assert items[1]["sub"] == "+20 Strength, +2% Critical strike  ·  Slot two"
+    assert a.errors() == []
+
+
+def test_launcher_tooltip_all_active_and_empty(addon):
+    for lang, done, empty in (("en", "Everything in your set is active", "Set is empty"),
+                              ("uk", "Усе з вашого набору активне", "Набір порожній")):
+        a = addon()
+        a.load_addon()
+        a.run(FIXTURE)
+        a.run("ns.SetLanguage(%r)" % lang)
+        a.run("ns.CharDB.sets[1].picks = {s1=1}; ns.CharDB.sets[1].burst = {}; ns.ViewModel:Invalidate()")
+        a.run("ns.UI.Launcher:Create(); local b = ns.UI.Launcher:GetFrame(); b:GetScript('OnEnter')(b)")
+        assert done in list(a.eval("GameTooltip.__lines").values())
+        a.run("ns.CharDB.activeSet = 2; ns.ViewModel:Invalidate(); GameTooltip.__lines = {}; "
+              "local b = ns.UI.Launcher:GetFrame(); b:GetScript('OnEnter')(b)")
+        lines = list(a.eval("GameTooltip.__lines").values())
+        assert done not in lines
+        assert any(l.startswith(empty) for l in lines), lines

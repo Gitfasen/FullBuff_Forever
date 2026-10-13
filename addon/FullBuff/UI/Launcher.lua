@@ -52,6 +52,8 @@ local function showTooltip(self)
       if i > 10 then GameTooltip:AddLine("...", 0.7, 0.7, 0.7) break end
       GameTooltip:AddLine(name, 1, 1, 1)
     end
+  elseif vm.empty then
+    GameTooltip:AddLine(L.SET_EMPTY, 0.7, 0.7, 0.7)
   else
     GameTooltip:AddLine(L.ALL_BUFFED, 0.4, 1, 0.4)
   end
