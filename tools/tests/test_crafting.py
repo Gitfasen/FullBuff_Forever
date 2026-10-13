@@ -7,7 +7,7 @@ def buff(items):
                 burst=False, new=False)
 
 
-def tables(skill_line="171", skill_name="Alchemy", recipe=False):
+def tables(skill_line="171", skill_name="Alchemy", recipe=False, trigger="0", rank="195"):
     t = {
         "SpellEffect": [{"SpellID": "11450", "Effect": "24", "EffectItemType": "8951",
                          "EffectTriggerSpell": "0"}],
@@ -18,10 +18,10 @@ def tables(skill_line="171", skill_name="Alchemy", recipe=False):
     }
     if recipe:
         t["ItemXItemEffect"] = [{"ItemID": "9999", "ItemEffectID": "5"}]
-        t["ItemEffect"] = [{"ID": "5", "SpellID": "700"}]
+        t["ItemEffect"] = [{"ID": "5", "SpellID": "700", "TriggerType": trigger}]
         t["SpellEffect"].append({"SpellID": "700", "Effect": "36", "EffectItemType": "0",
                                  "EffectTriggerSpell": "11450"})
-        t["ItemSparse"] = [{"ID": "9999", "RequiredSkillRank": "195"}]
+        t["ItemSparse"] = [{"ID": "9999", "RequiredSkillRank": rank}]
     return t
 
 
@@ -49,3 +49,15 @@ def test_craft_sources_idempotent():
     attach_craft_sources({1: b}, t)
     attach_craft_sources({1: b}, t)
     assert len(b.sources) == 1
+
+
+def test_non_use_trigger_ignored():
+    b = buff([8951])
+    attach_craft_sources({1: b}, tables(recipe=True, trigger="1"))
+    assert b.sources == [Source(kind="craft", name="Alchemy", note="215")]
+
+
+def test_zero_required_rank_falls_back_to_trivial():
+    b = buff([8951])
+    attach_craft_sources({1: b}, tables(recipe=True, rank="0"))
+    assert b.sources == [Source(kind="craft", name="Alchemy", note="215")]

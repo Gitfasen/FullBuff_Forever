@@ -33,7 +33,8 @@ def attach_craft_sources(buffs: dict[int, Buff], t: dict[str, list[dict]]) -> No
         if _i(r, "Effect") == EFFECT_LEARN_SPELL and _i(r, "EffectTriggerSpell"):
             teachers.setdefault(_i(r, "EffectTriggerSpell"), set()).add(_i(r, "SpellID"))
 
-    effect_spell = {_i(r, "ID"): _i(r, "SpellID") for r in t.get("ItemEffect", [])}
+    effect_spell = {_i(r, "ID"): _i(r, "SpellID") for r in t.get("ItemEffect", [])
+                    if _i(r, "TriggerType") == 0}  # on-use only
     required = {_i(r, "ID"): _i(r, "RequiredSkillRank") for r in t.get("ItemSparse", [])}
     use_spell_items: dict[int, list[int]] = {}
     for r in t.get("ItemXItemEffect", []):
@@ -43,7 +44,7 @@ def attach_craft_sources(buffs: dict[int, Buff], t: dict[str, list[dict]]) -> No
 
     def rank_for(spell: int, ability: dict) -> int:
         ranks = [required[item] for teacher in teachers.get(spell, ())
-                 for item in use_spell_items.get(teacher, ()) if item in required]
+                 for item in use_spell_items.get(teacher, ()) if required.get(item, 0) > 0]
         return min(ranks) if ranks else _i(ability, "TrivialSkillLineRankLow")
 
     for buff in buffs.values():
