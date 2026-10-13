@@ -80,8 +80,41 @@ def test_categories_in_order(addon):
     assert [order[i] for i in range(1, len(order) + 1)] == ["CLASS", "WORLD", "FLASK", "FOOD", "POTION"]
 
 
-def test_lvl_zero_no_requirement_and_smoke_real_data(addon):
+def test_lvl_zero_and_nil_have_no_requirement_at_level_1(addon):
+    a = build(addon, "{class='WARRIOR', level=1, active={}}")
+    a.run("""ns.Buffs[70] = {name='W0', cat='WORLD', fx={STA=1}, lvl=0}
+    ns.Buffs[71] = {name='C10', cat='CAMPING', fx={STA=1}, lvl=10}
+    ns.Buffs[72] = {name='Cnil', cat='CAMPING', fx={STA=1}}""")
+    get = "(function() for _, x in ipairs(ns.Catalog:Build(ns.__s)[%r]) do if x.id == %d then return x.status end end end)()"
+    assert a.eval(get % ("WORLD", 70)) == "CAN_ADD"
+    assert a.eval(get % ("CAMPING", 72)) == "CAN_ADD"
+    assert a.eval(get % ("CAMPING", 71)) == "UNAVAILABLE"
+    assert a.eval(get % ("FOOD", 31)) == "CAN_ADD"
+    assert a.eval(get % ("FOOD", 32)) == "UNAVAILABLE"
+
+
+def test_unknown_category_skipped(addon):
+    a = build(addon, S)
+    a.run("ns.Buffs[80] = {name='X', cat='order', fx={STA=1}} ns.Buffs[81] = {name='Y', cat='BOGUS', fx={STA=1}}")
+    assert a.eval("ns.Catalog:Build(ns.__s).BOGUS") is None
+    assert a.eval("type(ns.Catalog:Build(ns.__s).order[1])") == "string"
+
+
+def test_real_data_build_valid_statuses_and_categories(addon):
     a = addon()
-    a.run("ns.__s = {class='WARRIOR', level=1, active={}}")
-    assert a.eval("ns.Catalog:Build(ns.__s).CLASS ~= nil") in (True, False)
-    assert a.eval("#ns.Catalog:Build(ns.__s).order") > 0
+    a.run("ns.__s = {class='WARRIOR', level=60, active={}}")
+    bad = a.eval("""(function()
+      local c = ns.Catalog:Build(ns.__s)
+      local known = {}
+      for _, k in ipairs(ns.Catalog.CATEGORIES) do known[k] = true end
+      local ok = {ACTIVE=true, CAN_ADD=true, UNAVAILABLE=true}
+      if #c.order == 0 then return 'empty order' end
+      for _, cat in ipairs(c.order) do
+        if not known[cat] or not c[cat] or #c[cat] == 0 then return 'bad cat ' .. cat end
+        for _, e in ipairs(c[cat]) do
+          if not ok[e.status] then return 'bad status ' .. e.id end
+        end
+      end
+      return false
+    end)()""")
+    assert bad is False, bad

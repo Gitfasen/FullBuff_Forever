@@ -8,6 +8,9 @@ Catalog.CATEGORIES = { "CLASS", "WORLD", "CAMPING", "FLASK", "ELIXIR", "FOOD", "
 
 local RANK_LEVEL_SLACK = 10
 
+local KNOWN = {}
+for _, c in ipairs(Catalog.CATEGORIES) do KNOWN[c] = true end
+
 local function rankLvl(r) return r.lvl or 0 end
 
 -- Returns rankSpell, fx, allowed for a buff at the given level.
@@ -38,7 +41,7 @@ function Catalog:Build(state)
   local level = state.level or 0
   for id, buff in pairs(ns.Buffs or {}) do
     local cat = buff.cat
-    if cat and not (cat == "CLASS" and buff.selfOnly and buff.cls ~= state.class) then
+    if cat and KNOWN[cat] and not (cat == "CLASS" and buff.selfOnly and buff.cls ~= state.class) then
       local rankSpell, fx, allowed = pickRank(id, buff, level)
       local status
       if state.active and state.active[id] then
