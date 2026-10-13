@@ -12,7 +12,7 @@ local WIDTH, HEIGHT = 340, 440
 local STAT_H, SECTION_H, ITEM_H = 16, 22, 32
 local RED = "|cffff2020"
 
-local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t" -- ready-check tick: already on the character
+local CHECK = ns.UI.MARK_CHECK
 local frame, scroll, content, staleText, titleText, headerText, setButton
 local pool, used = {}, 0
 

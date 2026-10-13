@@ -204,7 +204,7 @@ function Options:SlotModel(setId)
   return out
 end
 
--- BurstModel(setId) -> { {buffId, name, tracked, bagCount} }: tracked buffs first in
+-- BurstModel(setId) -> { {buffId, name, tracked, bagCount, unavailable} }: tracked buffs first in
 -- the set's order (also ones that are no longer obtainable, so they can be removed),
 -- then every other obtainable burst buff by name.
 function Options:BurstModel(setId)
@@ -221,7 +221,10 @@ function Options:BurstModel(setId)
   for _, id in ipairs(set and set.burst or {}) do
     tracked[id] = true
     local e = available[id]
-    out[#out + 1] = { buffId = id, name = e and e.name or buffName(id), tracked = true, bagCount = count(id) }
+    out[#out + 1] = {
+      buffId = id, name = e and e.name or buffName(id), tracked = true, bagCount = count(id),
+      unavailable = e == nil,
+    }
   end
   local rest = {}
   for id, e in pairs(available) do
@@ -442,8 +445,8 @@ local function optionText(o)
   local L = ns.L
   local s = o.name
   if o.valueText ~= "" then s = s .. "  |cffb0b0b0" .. o.valueText .. "|r" end
-  if o.recommended then s = s .. "  |cffffd100(" .. L.RECOMMENDED .. ")|r" end
-  if o.active then s = s .. "  |cff80ff80(" .. L.STATUS_ACTIVE .. ")|r" end
+  if o.active then s = ns.UI.MARK_CHECK .. " " .. s end
+  if o.recommended then s = s .. " " .. ns.UI.MARK_STAR end
   if o.unavailable then s = s .. "  (" .. L.STATUS_UNAVAILABLE .. ")" end
   return s
 end
@@ -516,9 +519,14 @@ local function layoutSets()
     place(b, 16 + (i - 1) * 104, y)
     b:SetEnabled(i == 1 or activeId ~= nil)
   end
-  place(ui.renameBox, 16 + 4 * 104 + 8, y)
+  y = y - 30
+  -- rename edit box: own row, so it stays inside the scroll child
   if ui.renameBox:IsShown() and ui.renameBox.fbSet ~= activeId then ui.renameBox:Hide() end
-  y = y - 32
+  if ui.renameBox:IsShown() then
+    place(ui.renameBox, 20, y)
+    y = y - 26
+  end
+  y = y - 6
 
   -- spec binding: None / 1 / 2 / 3
   place(setsSpecLabel, 16, y)
@@ -567,7 +575,10 @@ local function layoutSets()
       place(c, 16, y)
       c:Show()
       c:SetChecked(b.tracked)
-      c.fbLabel:SetText(b.name .. "  |cffb0b0b0" .. string.format(L.IN_BAGS, b.bagCount) .. "|r")
+      local label = b.name .. "  |cffb0b0b0" .. string.format(L.IN_BAGS, b.bagCount) .. "|r"
+      if b.unavailable then label = b.name .. "  (" .. L.STATUS_UNAVAILABLE .. ")" end
+      c.fbLabel:SetText(label)
+      if b.unavailable then c.fbLabel:SetTextColor(0.6, 0.6, 0.6) else c.fbLabel:SetTextColor(1, 1, 1) end
       c.fbLabel:Show()
       local up, down = burstUp[nBurst], burstDown[nBurst]
       up.fbBuff, down.fbBuff = b.buffId, b.buffId

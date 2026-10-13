@@ -103,6 +103,55 @@ def test_burst_model_order(addon):
     assert m[1]["bagCount"] == 3 and m[0]["bagCount"] == 0 and m[0]["name"] == "Another"
 
 
+def test_burst_model_marks_unavailable_tracked(addon):
+    a = boot(addon)
+    a.run("ns.Sets:AddBurst(1, 32); ns.Sets:AddBurst(1, 30)")
+    by = {b["buffId"]: b for b in a.eval("ns.Options:BurstModel(1)").values()}
+    assert by[32]["unavailable"] is True and by[32]["tracked"] is True
+    assert by[30]["unavailable"] is not True and by[31]["unavailable"] is not True
+    panel(a)
+    lbl = a.eval("ns.Options.burstChecks and (function() for _, c in ipairs(ns.Options.burstChecks) do "
+                 "if c:IsShown() and c.fbBuff == 32 then return c.fbLabel:GetText() end end end)()")
+    assert "Unavailable" in lbl or "unavailable" in lbl.lower()
+
+
+def test_option_text_uses_marks(addon):
+    a = boot(addon)
+    panel(a)
+    star = "|TInterface" + chr(92) + "TargetingFrame" + chr(92) + "UI-RaidTargetingIcon_1:0|t"
+    tick = "|TInterface" + chr(92) + "RaidFrame" + chr(92) + "ReadyCheck-Ready:0|t"
+    assert a.eval("ns.UI.MARK_STAR") == star and a.eval("ns.UI.MARK_CHECK") == tick
+    def label(buff):
+        return a.eval("(function() for _, r in ipairs(ns.Options.radios) do if r:IsShown() and r.fbSlot == 'slotA' "
+                      "and r.fbBuff == %d then return r.fbLabel:GetText() end end end)()" % buff)
+    assert star in label(10) and tick not in label(10)
+    assert tick in label(11) and star not in label(11)
+    assert "Recommended" not in label(10) and "Active" not in label(11)
+
+
+def test_rename_box_fits_scroll_child(addon):
+    a = boot(addon)
+    panel(a)
+    click(a, "ns.Options.ui.rename")
+    assert a.eval("ns.Options.ui.renameBox:IsShown()") is True
+    pts = a.eval("(function() local p = {ns.Options.ui.renameBox:GetPoint()} return p[4] end)()")
+    w = a.eval("ns.Options.ui.renameBox:GetWidth()")
+    assert pts + w <= 580
+
+
+def test_state_event_refreshes_open_panel(addon):
+    a = boot(addon)
+    panel(a)
+    slots = lambda: {s["slot"] for s in a.eval("ns.Options:SlotModel(1)").values()}
+    assert a.eval("(function() for _, r in ipairs(ns.Options.radios) do if r:IsShown() and "
+                  "r.fbSlot == 'slotC' then return true end end return false end)()") is False
+    a.run("local g = ns.Catalog.Build; ns.Catalog.Build = function(...) local c = g(...); "
+          "c.FOOD[2].status = 'CAN_ADD'; return c end; ns.Events:Fire('FULLBUFF_STATE')")
+    assert a.eval("(function() for _, r in ipairs(ns.Options.radios) do if r:IsShown() and "
+                  "r.fbSlot == 'slotC' then return true end end return false end)()") is True
+    assert a.errors() == []
+
+
 def test_radio_click_picks(addon):
     a = boot(addon)
     panel(a)
@@ -208,8 +257,9 @@ def test_category_visibility_removed(addon):
     assert a.eval("ns.DB.collapsed") is None
     for lang in ("en", "uk"):
         a.run("ns.SetLanguage(%r)" % lang)
+        loc = "enUS" if lang == "en" else "ukUA"
         for key in ("OPT_CATEGORIES", "SHOW_ONLY_MISSING", "NO_BUFFS", "CATEGORY_FOOD"):
-            assert a.eval("rawget(ns.Locales.enUS, %r)" % key) is None
+            assert a.eval("rawget(ns.Locales.%s, %r)" % (loc, key)) is None
 
 
 def test_panel_builds_without_error(addon):
