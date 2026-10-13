@@ -190,3 +190,26 @@ def test_build_failure_reported_and_safe(addon):
     assert len(printed) >= 2
     a.run("ns.Events:Fire('FULLBUFF_LANGUAGE', 'uk'); ns.Options:Refresh()")
     assert a.eval("#__settings.categories") == 0
+
+
+def test_slash_does_not_assign_blizzard_slashcmdlist():
+    from harness import ADDON_DIR
+    src = (ADDON_DIR / "Core" / "Slash.lua").read_text(encoding="utf-8")
+    assert not re.search(r"^\s*SlashCmdList\s*=", src, re.M)
+
+
+def test_compartment_right_click_opens_options(addon):
+    a = loaded(addon)
+    a.run("FullBuff_OnCompartmentClick('FullBuff', 'RightButton')")
+    assert a.eval("__settings.opened[1]") == 1
+    assert a.eval("FullBuffPopover and FullBuffPopover:IsShown() or false") is False
+    a.run("FullBuff_OnCompartmentClick('FullBuff', 'LeftButton')")
+    assert a.eval("FullBuffPopover:IsShown()") is True
+    assert a.errors() == []
+
+
+def test_unused_saved_defaults_removed(addon):
+    a = loaded(addon)
+    for key in ("spec", "categories", "weights"):
+        assert a.eval("ns.Defaults.DB.%s" % key) is None
+        assert a.eval("ns.DB.%s" % key) is None

@@ -6,9 +6,6 @@ ns.Defaults = {
     scale = 1,
     onlyMissing = false,
     showAllStats = false,
-    spec = "auto",
-    categories = {},
-    weights = {},
   },
   Char = {
     pins = {},

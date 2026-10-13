@@ -58,5 +58,4 @@ local function handler(msg)
   end
 end
 
-SlashCmdList = SlashCmdList or {}
 SlashCmdList["FULLBUFF"] = handler

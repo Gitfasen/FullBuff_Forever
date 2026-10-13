@@ -30,10 +30,20 @@ In-game checks that cannot be automated are listed in `docs/manual-test.md`.
 ## Usage
 
 - `/fullbuff` toggles the popover
-- `/fullbuff options` opens the settings panel (right-clicking the launcher icon does the same)
+- `/fullbuff options` opens the settings panel (right-clicking the launcher icon or the addon compartment entry does the same)
 - `/fullbuff lang en|uk` switches the interface language
 - `/fullbuff debug` lists unknown auras and the stale state
 - `/fullbuff reset` resets the launcher position and collapsed sections
+
+## How the maximum is counted
+
+The maximum takes the best buff of every stacking group. Consumables follow a vanilla-style model: one flask, one temporary weapon enchant (oils, stones, imbues, including self-only class imbues such as Rockbiter Weapon), one Well Fed food, and one elixir and one scroll per dominant stat (e.g. one Agility elixir, one Spell damage elixir). Explicit groups in `tools/curated.yaml` (`excl_merge`) override this, e.g. the Rumsey Rum drinks (which stack with Well Fed), the scroll familiars and Spirit of Zanza.
+
+## Known limitations
+
+- The stacking model is an approximation: Forever-specific stacking rules that differ from it need a curated `excl_merge` entry.
+- Category ordering in the popover is fixed; user-defined ordering is not implemented yet.
+- Mana and health regeneration (MP5, HP5) from gear are not reported by the client; only known active buffs count towards the current value.
 
 ## Data sources
 
