@@ -107,7 +107,7 @@ UnitClass = function(unit) return "Warrior", "WARRIOR", 1 end
 UnitLevel = function(unit) return 60 end
 GetSpecialization = function() return 1 end
 GetSpecializationInfo = function(i) return 71, "Arms", "", "", "DAMAGER" end
-UnitStat = function(i) return 100, 100, 0, 0 end
+UnitStat = function(unit, i) return 100, 100, 0, 0 end
 
 -- Auras and weapon enchants
 C_UnitAuras = {

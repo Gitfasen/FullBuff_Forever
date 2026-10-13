@@ -17,3 +17,4 @@ Core\SavedVars.lua
 Data\Buffs.lua
 Data\Sources.lua
 Data\Weights.lua
+Engine\PlayerState.lua
