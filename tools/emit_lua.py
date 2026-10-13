@@ -117,6 +117,16 @@ def emit_weights(weights: dict[str, list[dict[str, float]]], path: Path) -> None
     _write(path, "\n".join(lines) + "\n")
 
 
+def emit_slots(slots: dict[str, dict], path: Path) -> None:
+    lines = ["ns.Slots = {"]
+    for sid in sorted(slots):
+        s = slots[sid]
+        name = f"{{en={lua_str(s['name']['en'])}, uk={lua_str(s['name']['uk'])}}}"
+        lines.append(f"  [{lua_str(sid)}] = {{name={name}, order={s['order']}}},")
+    lines.append("}")
+    _write(path, "\n".join(lines) + "\n")
+
+
 def _cell(s: str) -> str:
     return s.replace("|", "\\|")
 
@@ -125,7 +135,7 @@ def write_report(buffs: dict[int, Buff], unclassified: list[Buff], warnings: lis
                  unmatched_camps: list[str], crosscheck: list[int], path: Path,
                  unresolved_exclusives: list[tuple[str, str]] = (),
                  craft_count: int | None = None, unobtainable: list[Buff] = (),
-                 routeless: list[Buff] = ()) -> None:
+                 routeless: list[Buff] = (), slots: dict[str, dict] | None = None) -> None:
     out = ["# FullBuff build report", "", "## Counts per category", ""]
     counts = Counter(b.cat for b in buffs.values())
     out += [f"- {cat}: {n}" for cat, n in sorted(counts.items(), key=lambda kv: str(kv[0]))]
@@ -153,6 +163,10 @@ def write_report(buffs: dict[int, Buff], unclassified: list[Buff], warnings: lis
     section("Item buffs without a Questie route (lvl stays at the item's RequiredLevel)",
             [f"- {b.id} {b.name} [{b.cat}] lvl {b.lvl} items {', '.join(str(i) for i in b.items)}"
              for b in sorted(routeless, key=lambda b: (b.cat != "QUEST", b.id))])
+    if slots is not None:
+        options = Counter(b.excl for b in buffs.values() if not b.burst)
+        section("Slots", [f"- {sid} | {_cell(s['name']['en'])} | {options[sid]} options"
+                          for sid, s in sorted(slots.items(), key=lambda kv: kv[1]["order"])])
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")

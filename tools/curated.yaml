@@ -129,6 +129,34 @@ excl_merge:
   - ["Sayge's Dark Fortune of Armor", "Sayge's Dark Fortune of Strength", "Sayge's Dark Fortune of Agility",
      "Sayge's Dark Fortune of Stamina", "Sayge's Dark Fortune of Intelligence", "Sayge's Dark Fortune of Spirit"]
 
+# Conflict slots: merge stacking groups (current excl keys) across categories and name them.
+# The build sets excl = id on every buff of the listed groups. Other groups get automatic names.
+slots:
+  - id: INT
+    name: {en: Intellect, uk: Інтелект}
+    groups: ["CLASS:Arcane Intellect", "SCROLL:INT"]  # incl. camp Boosted Intellect
+  - id: STA
+    name: {en: Stamina, uk: Витривалість}
+    groups: ["CLASS:Power Word: Fortitude", "SCROLL:STA"]  # incl. camp Boosted Stamina
+  - id: SPI
+    name: {en: Spirit, uk: Дух}
+    groups: ["CLASS:Divine Spirit", "SCROLL:SPI"]  # incl. camp Boosted Spirit
+  - id: STR
+    name: {en: Strength, uk: Сила}
+    groups: ["SCROLL:STR", "CAMPING:Extra Strength"]
+  - id: AP
+    name: {en: Attack power, uk: Сила атаки}
+    groups: ["CLASS:Blessing of Might"]  # incl. camp Boosted Attack Power
+  - id: MP5
+    name: {en: Mana regeneration, uk: Відновлення мани}
+    groups: ["CLASS:Blessing of Wisdom"]  # incl. camp Boosted Mana Regeneration
+  - id: STAT_PCT
+    name: {en: All stats %, uk: Усі характеристики %}
+    groups: ["CLASS:Blessing of Kings"]  # incl. camp Boosted Stats %
+  - id: STATS
+    name: {en: All stats, uk: Усі характеристики}
+    groups: ["CLASS:Mark of the Wild"]  # incl. camp Boosted Stats
+
 # Per class: 3 spec maps in talent-tab order.
 weights:
   WARRIOR:
