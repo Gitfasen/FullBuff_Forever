@@ -97,6 +97,10 @@ exclude:
   - 409580  # Heart of the Lion: Season of Discovery spell; Forever's hunter page names it only as a client leftover
 
 override:
+  # Dire Maul tribute buffs: the tribute run needs level 55
+  1304759: {lvl: 55}  # Fengus' Ferocity
+  1304753: {lvl: 55}  # Mol'dar's Moxie
+  1304751: {lvl: 55}  # Slip'kik's Savvy
   25289: {burst: false}  # Battle Shout: 3 min party buff kept up continuously, not a cooldown
 
 # Buffs in one list share one exclusivity group, keyed "<cat>:<first name>". These explicit

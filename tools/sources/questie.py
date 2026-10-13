@@ -10,9 +10,9 @@ from tools.model import Buff, Source
 
 FIELD_NAMES = {
     "Item": {1: "name", 2: "npcDrops", 3: "objectDrops", 6: "questRewards", 14: "vendors"},
-    "Npc": {1: "name", 7: "spawns", 14: "subName"},
+    "Npc": {1: "name", 4: "minLevel", 7: "spawns", 14: "subName"},
     "Object": {1: "name", 4: "spawns"},
-    "Quest": {1: "name"},
+    "Quest": {1: "name", 4: "requiredLevel"},
 }
 
 LINE_RE = re.compile(r"^## X-(Item|Npc|Object|Quest)-(\d+)-(S|\d+)(?:-(\d+))?: (\S+)\s*$")
@@ -197,3 +197,45 @@ def attach_sources(buffs: dict[int, Buff], q: QuestieData, amap: dict[int, int])
                 quest = q.quests.get(qid)
                 if quest and quest.get("name"):
                     add(Source("quest", quest["name"]))
+
+
+def item_acquisition_level(item: dict | None, q: QuestieData) -> int | None:
+    """Lowest level at which `item` can be obtained, or None when QuestieDB lists no route.
+    vendor and object drop -> 0, quest reward -> quest requiredLevel, NPC drop -> NPC minLevel."""
+    if not item:
+        return None
+    levels = []
+    if item.get("vendors") or item.get("objectDrops"):
+        levels.append(0)
+    for qid in item.get("questRewards") or []:
+        levels.append(int((q.quests.get(qid) or {}).get("requiredLevel") or 0))
+    for nid in item.get("npcDrops") or []:
+        levels.append(int((q.npcs.get(nid) or {}).get("minLevel") or 0))
+    return min(levels) if levels else None
+
+
+def buff_acquisition_level(buff: Buff, q: QuestieData) -> int:
+    """Minimum acquisition level over the buff's items (craft source or an item without a
+    Questie route counts as 0)."""
+    if any(s.kind == "craft" for s in buff.sources):
+        return 0
+    levels = [item_acquisition_level(q.items.get(i), q) for i in buff.items]
+    return min((0 if lv is None else lv) for lv in levels) if levels else 0
+
+
+def apply_acquisition_levels(buffs: dict[int, Buff], q: QuestieData) -> None:
+    """lvl = max(current lvl, acquisition level) for item buffs."""
+    for buff in buffs.values():
+        if buff.items:
+            buff.lvl = max(buff.lvl, buff_acquisition_level(buff, q))
+
+
+def routeless_item_buffs(buffs: dict[int, Buff], q: QuestieData) -> list[Buff]:
+    """Item buffs with no craft source and no item having a Questie route (they stay at their
+    RequiredLevel-based lvl), sorted by id."""
+    out = []
+    for bid in sorted(buffs):
+        b = buffs[bid]
+        if b.items and not any(s.kind == "craft" for s in b.sources)                 and all(item_acquisition_level(q.items.get(i), q) is None for i in b.items):
+            out.append(b)
+    return out

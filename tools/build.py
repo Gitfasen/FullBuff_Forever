@@ -16,7 +16,8 @@ from tools.sources.crafting import attach_craft_sources
 from tools.sources.db2 import DB2_TABLES, default_get, fetch_tables, read_table
 from tools.sources.forever_info import (apply_camping, crosscheck, fetch_site, parse_camping,
                                         parse_finder, unresolved_exclusives)
-from tools.sources.questie import attach_sources, drop_unobtainable, load_area_map, load_questie
+from tools.sources.questie import (apply_acquisition_levels, attach_sources, routeless_item_buffs,
+                                   drop_unobtainable, load_area_map, load_questie)
 
 ROOT = Path(__file__).resolve().parent.parent
 ERA_BUILD = "1.15.9.70003"
@@ -85,6 +86,7 @@ def main(argv: list[str]) -> int:
         buffs[b.id] = b
     attach_sources(buffs, q, amap)
     attach_craft_sources(buffs, t)
+    apply_acquisition_levels(buffs, q)  # after craft sources: a craft route means level 0
     curated_ids = {inc["id"] for inc in cur.get("include") or []}
     unobtainable = drop_unobtainable(buffs, q, curated_ids)
     weights = load_weights(cur)
@@ -95,7 +97,8 @@ def main(argv: list[str]) -> int:
     craft_count = sum(any(s.kind == "craft" for s in b.sources) for b in buffs.values())
     write_report(buffs, unclassified, warnings, unmatched,
                  crosscheck(buffs, parse_finder(finder)), args.report,
-                 unresolved_exclusives(buffs, camps), craft_count, unobtainable)
+                 unresolved_exclusives(buffs, camps), craft_count, unobtainable,
+                 routeless_item_buffs(buffs, q))
     print(f"{len(buffs)} buffs, {len(unclassified)} unclassified, {len(unobtainable)} unobtainable, "
           f"{len(warnings)} warnings; "
           f"report: {args.report}")

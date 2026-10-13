@@ -1,7 +1,7 @@
 """ViewModel tests. Fixture: WARRIOR spec 1, weights AP=1, ratio apPerStr=2.
 
 Catalog (all weighted entries are positive-score for a WARRIOR with AP=1):
-  CLASS : 1 Alpha (ACTIVE, STR 10), 2 Bravo (CAN_ADD, STR 20), 3 Zulu (UNAVAILABLE)
+  CLASS : 1 Alpha (ACTIVE, STR 10), 2 Bravo (CAN_ADD, STR 20), 3 Zulu (UNAVAILABLE, not listed)
   FOOD  : 4 Apple (CAN_ADD, STR 5), 5 Berry (CAN_ADD, STR 3)
   POTION: 6 Rage (CAN_ADD, burst, AP 100)
 Recommended (MaxCalc marks): 2 Bravo, 4 Apple (excl food), 6 is burst.
@@ -48,8 +48,8 @@ def items(vm):
 def test_sections_active_then_recommended_then_rest(addon):
     a, vm = build(addon)
     it = items(vm)
-    # ACTIVE first, then recommended CAN_ADD, then other CAN_ADD, UNAVAILABLE last
-    assert [i[0] for i in it["CLASS"]] == [1, 2, 3]
+    # ACTIVE first, then CAN_ADD; UNAVAILABLE entries are not listed
+    assert [i[0] for i in it["CLASS"]] == [1, 2]
     # within CAN_ADD the recommended one leads (Apple, recommended, is listed before Berry)
     assert [i[0] for i in it["FOOD"]] == [4, 5]
     assert it["FOOD"][0][2] is True and it["FOOD"][1][2] is False
@@ -127,3 +127,21 @@ def test_spec_name_from_state_and_hint_when_not_auto(addon):
     vm = a.eval("ns.ViewModel:Build({class='WARRIOR', spec=2, specAuto=true, level=60, active={}, stats={},"
                 " ratios={}}, {order={}})")
     assert vm["header"]["specName"] == "Specialization 2" and vm["header"]["specHint"] is None
+
+
+def test_unavailable_entries_are_not_listed(addon):
+    a, vm = build(addon)
+    ids = [i["id"] for s in vm["sections"].values() for i in s["items"].values()]
+    assert 3 not in ids
+
+
+def test_section_with_only_unavailable_is_dropped(addon):
+    a = addon()
+    a.run("ns.Weights = {WARRIOR = {{AP=1}}}; ns.DB = {}")
+    a.run("""
+local cat = {order={"CLASS","FOOD"},
+  CLASS={{id=1, cat="CLASS", name="A", fx={STR=1}, status="UNAVAILABLE"}},
+  FOOD={{id=2, cat="FOOD", name="B", fx={STR=1}, status="CAN_ADD"}}}
+__ns.__vm = ns.ViewModel:Build({class="WARRIOR", spec=1, level=60, active={}, stats={},
+  unknownAuras={}, ratios={apPerStr=2}}, cat)""")
+    assert [s["cat"] for s in a.eval("__ns.__vm.sections").values()] == ["FOOD"]

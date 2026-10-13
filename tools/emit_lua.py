@@ -124,7 +124,8 @@ def _cell(s: str) -> str:
 def write_report(buffs: dict[int, Buff], unclassified: list[Buff], warnings: list[str],
                  unmatched_camps: list[str], crosscheck: list[int], path: Path,
                  unresolved_exclusives: list[tuple[str, str]] = (),
-                 craft_count: int | None = None, unobtainable: list[Buff] = ()) -> None:
+                 craft_count: int | None = None, unobtainable: list[Buff] = (),
+                 routeless: list[Buff] = ()) -> None:
     out = ["# FullBuff build report", "", "## Counts per category", ""]
     counts = Counter(b.cat for b in buffs.values())
     out += [f"- {cat}: {n}" for cat, n in sorted(counts.items(), key=lambda kv: str(kv[0]))]
@@ -149,6 +150,9 @@ def write_report(buffs: dict[int, Buff], unclassified: list[Buff], warnings: lis
     section("Excluded as unobtainable",
             [f"- {b.id} {b.name} [{b.cat}] items {', '.join(str(i) for i in b.items)}"
              for b in sorted(unobtainable, key=lambda b: b.id)])
+    section("Item buffs without a Questie route (lvl stays at the item's RequiredLevel)",
+            [f"- {b.id} {b.name} [{b.cat}] lvl {b.lvl} items {', '.join(str(i) for i in b.items)}"
+             for b in sorted(routeless, key=lambda b: (b.cat != "QUEST", b.id))])
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")

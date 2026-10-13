@@ -12,7 +12,8 @@ local _, ns = ...
 --   badge   = number of recommended buffs that can still be added (non-burst),
 --   tooltip = { progress = percentOfMax (0..100), missing = { names... } },
 -- }
--- Section items are ordered ACTIVE, CAN_ADD (recommended first), UNAVAILABLE.
+-- Section items are ordered ACTIVE, CAN_ADD (recommended first). UNAVAILABLE entries (e.g. the
+-- player is below the required level) are not listed at all; a section left empty is dropped.
 -- activeCount/total ignore the "only missing" filter; total excludes UNAVAILABLE.
 -- Sections of categories with ns.DB.hiddenCats[cat] == true are omitted from `sections`
 -- only; MaxCalc, the badge and the tooltip still count them (hiding is display-only).
@@ -133,7 +134,7 @@ function VM:Build(state, catalog)
       for _, e in ipairs(entries) do
         if e.status == "ACTIVE" then sec.activeCount = sec.activeCount + 1 end
         if e.status ~= "UNAVAILABLE" then sec.total = sec.total + 1 end
-        if not DB.onlyMissing or e.status == "CAN_ADD" then
+        if e.status ~= "UNAVAILABLE" and (not DB.onlyMissing or e.status == "CAN_ADD") then
           sec.items[#sec.items + 1] = {
             id = e.id, icon = iconFor(e.rankSpell or e.id), name = e.name,
             valueText = VM.FormatFx(e.fx), status = e.status, recommended = e.recommended and true or false,

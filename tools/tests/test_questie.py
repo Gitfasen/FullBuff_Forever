@@ -46,7 +46,7 @@ def test_decodes_scalar_and_table_fields(tmp_path):
     assert q.objects[7]["spawns"] == {1: [[1.0, 2.0]]}
     assert q.npcs[11]["spawns"] == {2: [[1.0, 2.0]]}
     assert q.quests[9]["name"] == "A Quest"
-    assert q.quests[10] == {"name": "Dense"}
+    assert q.quests[10] == {"name": "Dense", "requiredLevel": 30}
 
 
 def test_reassembles_chunked_value(tmp_path):
@@ -175,3 +175,74 @@ def test_drop_unobtainable_items_absent_from_questie():
     dropped = drop_unobtainable(buffs, q, keep={5})
     assert sorted(buffs) == [1, 3, 4, 5, 6]
     assert [b.id for b in dropped] == [2]
+
+
+# --- acquisition levels -------------------------------------------------------------------
+
+def _acq(items, q, lvl=0, sources=()):
+    from tools.sources.questie import apply_acquisition_levels
+    b = buff(items)
+    b.lvl = lvl
+    b.sources = list(sources)
+    apply_acquisition_levels({1: b}, q)
+    return b.lvl
+
+
+def test_acquisition_quest_reward_uses_required_level():
+    q = QuestieData(items={5: {"questRewards": [9]}}, quests={9: {"name": "Q", "requiredLevel": 47}})
+    assert _acq([5], q) == 47
+
+
+def test_acquisition_npc_drop_uses_min_level():
+    q = QuestieData(items={5: {"npcDrops": [7, 8]}},
+                    npcs={7: {"name": "A", "minLevel": 52}, 8: {"name": "B", "minLevel": 58}})
+    assert _acq([5], q) == 52
+
+
+def test_acquisition_vendor_beats_quest():
+    q = QuestieData(items={5: {"vendors": [3], "questRewards": [9]}},
+                    quests={9: {"name": "Q", "requiredLevel": 47}})
+    assert _acq([5], q) == 0
+
+
+def test_acquisition_object_drop_is_zero():
+    q = QuestieData(items={5: {"objectDrops": [3], "questRewards": [9]}},
+                    quests={9: {"name": "Q", "requiredLevel": 47}})
+    assert _acq([5], q) == 0
+
+
+def test_acquisition_craft_source_is_zero():
+    q = QuestieData(items={5: {"questRewards": [9]}}, quests={9: {"name": "Q", "requiredLevel": 47}})
+    assert _acq([5], q, sources=[Source("craft", "Alchemy")]) == 0
+
+
+def test_acquisition_item_level_stays_when_higher():
+    q = QuestieData(items={5: {"questRewards": [9]}}, quests={9: {"name": "Q", "requiredLevel": 47}})
+    assert _acq([5], q, lvl=55) == 55
+
+
+def test_acquisition_no_routes_unchanged():
+    q = QuestieData(items={5: {"name": "x"}})
+    assert _acq([5], q, lvl=12) == 12
+    assert _acq([99], q, lvl=12) == 12
+
+
+def test_acquisition_min_over_items():
+    q = QuestieData(items={5: {"questRewards": [9]}, 6: {"questRewards": [10]}},
+                    quests={9: {"requiredLevel": 55}, 10: {"requiredLevel": 47}})
+    assert _acq([5, 6], q) == 47
+
+
+def test_acquisition_ignores_buffs_without_items():
+    q = QuestieData()
+    assert _acq([], q, lvl=0) == 0
+
+
+def test_loads_quest_required_level_and_npc_min_level(tmp_path):
+    toc = write_toc(tmp_path, [
+        f"## X-Quest-9-S: {b64([b'Q', None, None, 47, 50])}",
+        f"## X-Npc-4-S: {b64([b'N', None, None, 52, 53])}",
+    ])
+    q = load_questie(toc)
+    assert q.quests[9]["requiredLevel"] == 47
+    assert q.npcs[4]["minLevel"] == 52
