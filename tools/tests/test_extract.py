@@ -234,3 +234,18 @@ def test_effects_on_pet_ignored():
     pet = eff(19577, 290, 100) | {"ImplicitTarget_0": "5"}
     t = tables({19577: "Intimidation"}, [pet], {19577: 15}, class_sets={19577: 9})
     assert extract_buffs(t, set()) == ({}, [])
+
+
+def test_value_passed_by_trigger_aura_227_sets_food_value_top_tier():
+    # Forever foods: "Nutritious Food" passes its value to a shared "Well Fed" template (bp 1)
+    # through aura 227; the strongest tier is kept with its own items and level.
+    t = tables({1248401: "Nutritious Food", 1248380: "Nutritious Food", 1131: "Food", 1248422: "Well Fed"},
+               [eff(1248401, 0, 0, effect=64, trigger=1131), eff(1248401, 227, 20, trigger=1248422),
+                eff(1248380, 0, 0, effect=64, trigger=1131), eff(1248380, 227, 1, trigger=1248422),
+                eff(1131, 84, 358), eff(1248422, 29, 1, misc=0)],
+               {1248401: 10, 1248380: 10, 1131: 30, 1248422: 900},
+               items=[(20452, 0, 5, 0, 45, [1248401]), (2681, 0, 5, 0, 1, [1248380])])
+    buffs, unclassified = extract_buffs(t, set())
+    b = buffs[1248422]
+    assert (b.cat, b.fx, b.items, b.lvl) == ("FOOD", {"STR": 20}, [20452], 45)
+    assert list(buffs) == [1248422] and unclassified == []

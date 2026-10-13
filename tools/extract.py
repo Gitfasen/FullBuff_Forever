@@ -21,7 +21,8 @@ AURA_ARMOR_PCT = 101      # MOD_RESISTANCE_PCT; misc 1 = armor
 AURA_PERIODIC_ENERGIZE = 24
 AURA_MAX_POWER = 418
 POWER_MANA = 0
-TARGET_PET = 5            # ImplicitTarget: the caster's pet (Intimidation, Blessing of the Black Book)
+AURA_TRIGGER_WITH_VALUE = 227  # PERIODIC_TRIGGER_SPELL_WITH_VALUE: bp is the triggered spell's value
+TARGET_PET = 5           # ImplicitTarget: the caster's pet (Intimidation, Blessing of the Black Book)
 # Test / placeholder / deprecated spells and items, e.g. "(DNT) ... - TEST RAID SPELL",
 # "Test Sharpen Blade", "ALEX BUG TEST ITEM", "Deprecated Reed Pipe".
 JUNK_RE = re.compile(r"\(DNT\)|\[(?:DNT|PH)\]|\bTEST\b|^Test\b|^Copy of\b|^Deprecated\b")
@@ -186,6 +187,8 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
 
     # aura spell -> items, following EffectTriggerSpell up to TRIGGER_DEPTH
     aura_items: dict[int, list[int]] = defaultdict(list)
+    # aura spell -> {item: value} handed over by AURA_TRIGGER_WITH_VALUE (Forever foods)
+    passed: dict[int, dict[int, int]] = defaultdict(dict)
     for root, item_ids in use_items.items():
         frontier, seen = [root], {root}
         for _depth in range(TRIGGER_DEPTH + 1):
@@ -197,6 +200,11 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
                             aura_items[sid].append(iid)
                 for r in effects.get(sid, []):
                     trig = _i(r, "EffectTriggerSpell")
+                    if trig and _i(r, "Effect") in APPLY_EFFECTS \
+                            and _i(r, "EffectAura") == AURA_TRIGGER_WITH_VALUE:
+                        value = int(float(r.get("EffectBasePointsF") or 0))
+                        for iid in item_ids:
+                            passed[trig][iid] = max(value, passed[trig].get(iid, value))
                     if trig and trig not in seen:
                         seen.add(trig)
                         nxt.append(trig)
@@ -219,6 +227,11 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
         fx = efx if eid is not None else spell_fx(sid)
         if not fx:
             continue
+        if passed.get(sid):
+            # shared template: the item tiers pass their own value; keep the strongest tier
+            top = max(passed[sid].values())
+            fx = {k: float(top) for k in fx}
+            item_ids = [iid for iid in item_ids if passed[sid].get(iid) == top]
         classified = [(iid, c) for iid in item_ids
                       if (c := _item_category(items.get(iid), iid in eating_items))]
         if eid is not None:
