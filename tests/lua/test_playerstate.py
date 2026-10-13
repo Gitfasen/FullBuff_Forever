@@ -117,13 +117,27 @@ def test_shared_aura_falls_back_to_level(addon):
     assert s["active"][201] is True and s["active"][202] is None
 
 
-def test_shared_aura_secret_points_falls_back(addon):
-    a = make(addon, {"issecretvalue": lambda v: v == 12,
-                     "UnitLevel": lambda unit: 35,
-                     "C_UnitAuras.GetAuraDataByIndex":
-                     auras({"spellId": 999, "name": "Well Fed", "points": [12]})})
+def test_secret_points_keeps_snapshot_stale(addon):
+    a = make(addon, {"C_UnitAuras.GetAuraDataByIndex": auras({"spellId": 101, "name": "R1"})})
+    a.run("ns.PlayerState:Refresh()")
+    a.mock("issecretvalue", lambda v: v == 12)
+    a.mock("C_UnitAuras.GetAuraDataByIndex",
+           auras({"spellId": 999, "name": "Well Fed", "points": [12]}))
     s = a.eval("ns.PlayerState:Refresh()")
-    assert s["stale"] is False and s["active"][201] is True
+    assert s["stale"] is True and s["active"][100] is True and s["active"][201] is None
+
+
+def test_rap_per_agi_by_class(addon):
+    for cls, want in (("HUNTER", 2), ("WARRIOR", 1), ("ROGUE", 1), ("MAGE", 0)):
+        a = make(addon, {"UnitClass": lambda unit, c=cls: (c.title(), c, 1)})
+        assert a.eval("ns.PlayerState:Refresh()")["ratios"]["rapPerAgi"] == want
+
+
+def test_secret_ratio_keeps_snapshot_stale(addon):
+    for name in ("GetAttackPowerForStat", "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect"):
+        a = make(addon, {"issecretvalue": lambda v: v == 777, name: lambda *args: 777})
+        s = a.eval("ns.PlayerState:Refresh()")
+        assert s["stale"] is True, name
 
 
 def test_combat_keeps_snapshot_stale(addon):

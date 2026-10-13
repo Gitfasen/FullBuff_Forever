@@ -50,7 +50,7 @@ local function firstNonZero(points)
   if type(points) ~= "table" then return nil end
   for i = 1, #points do
     local p = points[i]
-    if type(p) == "number" and not isSecret(p) and p ~= 0 then return p end
+    if type(p) == "number" and p ~= 0 then return p end
   end
   return nil
 end
@@ -150,20 +150,25 @@ local function readStats()
   return stats
 end
 
-local function readRatios(stats)
-  local r = { hpPerSta = HP_PER_STA, manaPerInt = MANA_PER_INT }
+local RAP_PER_AGI = { HUNTER = 2, WARRIOR = 1, ROGUE = 1 }
+
+-- Returns a ratios table, or nil when a value is secret.
+local function readRatios(stats, class)
+  local r = { hpPerSta = HP_PER_STA, manaPerInt = MANA_PER_INT, rapPerAgi = RAP_PER_AGI[class] or 0 }
   if type(GetAttackPowerForStat) == "function" then
     r.apPerStr = GetAttackPowerForStat(1, 1)
     r.apPerAgi = GetAttackPowerForStat(2, 1)
-    r.rapPerAgi = r.apPerAgi
+    if isSecret(r.apPerStr) or isSecret(r.apPerAgi) then return nil end
   end
   if type(GetCritChanceFromAgility) == "function" and stats.AGI and stats.AGI > 0 then
     local v = GetCritChanceFromAgility("player")
-    if v and not isSecret(v) then r.critPerAgi = v / stats.AGI end
+    if isSecret(v) then return nil end
+    if v then r.critPerAgi = v / stats.AGI end
   end
   if type(GetSpellCritChanceFromIntellect) == "function" and stats.INT and stats.INT > 0 then
     local v = GetSpellCritChanceFromIntellect("player")
-    if v and not isSecret(v) then r.spellCritPerInt = v / stats.INT end
+    if isSecret(v) then return nil end
+    if v then r.spellCritPerInt = v / stats.INT end
   end
   return r
 end
@@ -180,6 +185,11 @@ local function readAuras(level)
       if not aura then break end
       local spellId, name = aura.spellId, aura.name
       if isSecret(spellId) or isSecret(name) then return nil end
+      if type(aura.points) == "table" then
+        for k = 1, #aura.points do
+          if isSecret(aura.points[k]) then return nil end
+        end
+      end
       local candidates = auraLookup[spellId]
       if candidates then
         local id = pickBuff(candidates, aura, level)
@@ -221,9 +231,10 @@ function PlayerState:Refresh()
   if ns.Compat.CanReadAuras() then
     local stats = readStats()
     local active, activeAura, unknown = readAuras(s.level)
-    if stats and active then
+    local ratios = stats and readRatios(stats, s.class)
+    if stats and active and ratios then
       s.stats, s.active, s.activeAura, s.unknownAuras = stats, active, activeAura, unknown
-      s.ratios = readRatios(stats)
+      s.ratios = ratios
       s.stale = false
     end
   end
