@@ -117,3 +117,15 @@ def test_new_flag_uses_era_ids():
                items=[(10, 0, 1, 0, 1, [1]), (11, 0, 1, 0, 1, [2])])
     buffs, _ = extract_buffs(t, {1})
     assert buffs[1].new is False and buffs[2].new is True
+
+
+def test_debuff_with_only_negative_stats_not_extracted():
+    t = tables({700: "Demoralizing Shout"}, [eff(700, 99, -300)], {700: 30}, class_sets={700: 4})
+    buffs, unclassified = extract_buffs(t, set())
+    assert buffs == {} and unclassified == []
+
+
+def test_mixed_positive_negative_keeps_only_positives():
+    t = tables({701: "Trade-off"}, [eff(701, 29, 20, misc=0), eff(701, 29, -10, misc=3), eff(701, 22, 0, misc=1)],
+               {701: 60}, items=[(702, 0, 1, 0, 1, [701])])
+    assert extract_buffs(t, set())[0][701].fx == {"STR": 20}

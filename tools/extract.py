@@ -28,6 +28,11 @@ def _i(row: dict, key: str) -> int:
     return int(float(v)) if v not in (None, "") else 0
 
 
+def _positive(fx: dict[str, float]) -> dict[str, float]:
+    """Keep only buffing (> 0) entries; debuffs carry negative values."""
+    return {k: v for k, v in fx.items() if v > 0}
+
+
 def _spell_fx(effects: list[dict]) -> dict[str, float]:
     fx: dict[str, float] = defaultdict(float)
     for r in effects:
@@ -47,7 +52,7 @@ def _spell_fx(effects: list[dict]) -> dict[str, float]:
                 fx["ARMOR"] += val
         elif aura in SIMPLE_AURAS:
             fx[SIMPLE_AURAS[aura]] += val
-    return dict(fx)
+    return _positive(fx)
 
 
 def _item_category(item: dict | None) -> str | None:
@@ -104,7 +109,7 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
                 elif etype == 3:
                     for k, v in spell_fx(arg).items():
                         fx[k] += v
-            return eid, dict(fx)
+            return eid, _positive(fx)
         return None, {}
 
     def make(sid: int, cat, fx, lvl, item_ids, **kw) -> Buff:
