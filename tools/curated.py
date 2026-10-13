@@ -8,6 +8,48 @@ from tools.sources.questie import QuestieData, _locations
 CLASSES = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"]
 BUFF_FIELDS = {f.name for f in fields(Buff)} - {"id"}
 
+# Stacking model for consumables (vanilla-style; curated excl_merge groups override):
+# one flask, one temporary weapon enchant (incl. self-only class imbues), one Well Fed food,
+# and one elixir / scroll per dominant stat.
+FOOD_GROUP = "FOOD:Well Fed"
+STAT_GROUPED = ("ELIXIR", "SCROLL")
+DOMINANCE_ORDER = ("STR", "AGI", "STA", "INT", "SPI", "AP", "RAP", "SPELL_DMG", "HEAL", "ARMOR", "HP",
+                   "MANA", "MP5", "HP5", "CRIT", "SPELL_CRIT", "HIT", "SPELL_HIT")
+# Amount of each stat worth about one primary stat point, to compare mixed fx
+# (e.g. Mongoose AGI 25 + CRIT 2 -> AGI; Phalanx ARMOR 500 + HP 400 -> ARMOR).
+STAT_UNIT = {"AP": 2, "RAP": 2, "ARMOR": 10, "HP": 10, "MANA": 15, "MP5": 0.5, "HP5": 0.5,
+             "CRIT": 0.1, "SPELL_CRIT": 0.1, "HIT": 0.1, "SPELL_HIT": 0.1}
+PCT_UNIT = 0.1  # percent keys (STAT_PCT, X_PCT, ARMOR_PCT) are their own stats
+
+
+def dominant_stat(fx: dict[str, float]) -> str | None:
+    """The fx key with the largest normalized value; ties go to the first in DOMINANCE_ORDER."""
+    def rank(k: str) -> int:
+        return DOMINANCE_ORDER.index(k) if k in DOMINANCE_ORDER else len(DOMINANCE_ORDER)
+
+    def norm(k: str) -> float:
+        unit = PCT_UNIT if k.endswith("_PCT") else STAT_UNIT.get(k, 1)
+        return fx[k] / unit
+    keys = [k for k in fx if fx[k] > 0]
+    if not keys:
+        return None
+    return min(keys, key=lambda k: (-round(norm(k), 6), rank(k), k))
+
+
+def stacking_group(b: Buff) -> str:
+    """The exclusivity group a buff falls into under the consumable stacking model."""
+    if b.cat == "FLASK":
+        return "FLASK"
+    if b.cat == "WEAPON" or (b.cat == "CLASS" and b.enchant is not None and b.self_only):
+        return "WEAPON"
+    if b.cat == "FOOD":
+        return FOOD_GROUP
+    if b.cat in STAT_GROUPED:
+        stat = dominant_stat(b.fx)
+        if stat:
+            return f"{b.cat}:{stat}"
+    return b.excl
+
 
 def _bad_fx(fx) -> str | None:
     """Why `fx` is not a valid {stat key: number} map, or None."""
@@ -85,6 +127,9 @@ def apply_curated(buffs: dict[int, Buff], unclassified: list[Buff], cur: dict,
         if not hit and len(unclassified) == n:
             warnings.append(f"curated exclude {sid}: spell not found")
 
+    for b in buffs.values():
+        b.excl = stacking_group(b)
+
     for sid, changes in (cur.get("override") or {}).items():
         buff = buffs.get(sid) or next((b for b in unclassified if b.id == sid), None)
         if buff is None:
@@ -114,7 +159,8 @@ def apply_curated(buffs: dict[int, Buff], unclassified: list[Buff], cur: dict,
                 warnings.append(f"curated excl_merge: buff '{name}' not found")
         if not members:
             continue
-        key = members[0][0].excl
+        first = members[0][0]
+        key = f"{first.cat}:{first.name}"  # an explicit group, apart from the stat groups
         for lst in members:
             for b in lst:
                 b.excl = key

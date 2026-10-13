@@ -11,7 +11,7 @@ def eff(spell, aura, value, misc=0, effect=6, trigger=0, period=0):
 def tables(spells, effects, durations, items=(), class_sets=None, levels=None, enchants=(), learn=None,
            attrs=None, class_masks=None):
     """spells: {id: name}; durations: {spell_id: seconds};
-    items: (id, class, sub, inv, reqlevel, [spell ids][, item name]);
+    items: (id, class, sub, inv, reqlevel, [spell ids][, item name[, item level]]);
     learn: {spell_id: AcquireMethod} trainer rows on a class skill line (default: every class_sets spell, 0);
     attrs: {spell_id: SpellMisc.Attributes_0}; class_masks: {spell_id: SkillLineAbility.ClassMask}."""
     learn = dict(learn if learn is not None else {s: 0 for s in (class_sets or {})})
@@ -35,9 +35,10 @@ def tables(spells, effects, durations, items=(), class_sets=None, levels=None, e
                              for s, a in learn.items()],
     }
     n = 0
-    for iid, cls, sub, inv, req, sp_ids, *name in items:
+    for iid, cls, sub, inv, req, sp_ids, *rest in items:
         t["Item"].append({"ID": str(iid), "ClassID": str(cls), "SubclassID": str(sub), "InventoryType": str(inv)})
-        t["ItemSparse"].append({"ID": str(iid), "RequiredLevel": str(req), "Display_lang": name[0] if name else ""})
+        t["ItemSparse"].append({"ID": str(iid), "RequiredLevel": str(req), "Display_lang": rest[0] if rest else "",
+                                "ItemLevel": str(rest[1]) if len(rest) > 1 else ""})
         for sp in sp_ids:
             n += 1
             t["ItemEffect"].append({"ID": str(n), "TriggerType": "0", "SpellID": str(sp)})
@@ -262,11 +263,32 @@ def test_food_tiers_are_separate_buffs_with_own_value_level_and_items():
     buffs, unclassified = extract_buffs(_food_tiers(), {1248422})
     assert sorted(buffs) == [1248380, 1248401] and unclassified == []
     hi, lo = buffs[1248401], buffs[1248380]
-    assert (hi.name, hi.cat, hi.fx) == ("Well Fed", "FOOD", {"STR": 20, "STA": 20})
+    assert (hi.name, hi.cat, hi.fx) == ("Well Fed", "FOOD", {"STR": 20, "STA": 20})  # no item name -> aura name
+    assert hi.aura == 1248422  # the player's aura; matching uses it, never the name
     assert (hi.items, hi.lvl, hi.dur) == ([20452], 45, 900)
     assert (lo.fx, lo.items, lo.lvl) == ({"STR": 1, "STA": 1}, [2681], 1)
     assert hi.excl == lo.excl == "FOOD:Well Fed"
     assert hi.new is True and hi.burst is False
+
+
+def test_food_tier_named_after_first_item_with_level_from_required_or_item_level():
+    # Forever copies of foods carry RequiredLevel 1 (or no ItemSparse row); food item
+    # level is required level + 10, so ItemLevel 45 means level 35.
+    t = tables({1248398: "Nutritious Food", 1131: "Food", 1248422: "Well Fed"},
+               [eff(1248398, 0, 0, effect=64, trigger=1131), eff(1248398, 227, 20, trigger=1248422),
+                eff(1131, 84, 358), eff(1248422, 29, 1, misc=2)],
+               {1248398: 10, 1131: 30, 1248422: 900},
+               items=[(12212, 0, 5, 0, 35, [1248398], "Jungle Stew", 45),
+                      (287973, 0, 5, 0, 1, [1248398], "Tender Wolf Steak", 45),
+                      (252683, 0, 5, 0, 0, [1248398])])
+    t["ItemSparse"] = [r for r in t["ItemSparse"] if r["ID"] != "252683"]
+    b = extract_buffs(t, set())[0][1248398]
+    assert (b.name, b.lvl, b.items) == ("Jungle Stew", 35, [12212, 287973, 252683])
+    t["ItemSparse"] = [r for r in t["ItemSparse"] if r["ID"] == "287973"]
+    assert extract_buffs(t, set())[0][1248398].lvl == 35
+    # a real level-1 food keeps level 1 (ItemLevel 5 -> no derived level)
+    t["ItemSparse"] = [{"ID": "287973", "RequiredLevel": "1", "ItemLevel": "5", "Display_lang": "Bread"}]
+    assert extract_buffs(t, set())[0][1248398].lvl == 1
 
 
 def test_food_tier_with_non_positive_value_dropped():

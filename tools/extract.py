@@ -44,6 +44,7 @@ CONSUMABLE_OTHER = 8
 # temporary weapon enchant: 54 (classic), 360 (Forever imbues: Rockbiter Weapon, "Imbue ..." items)
 ENCHANT_EFFECTS = {54, 360}
 TRIGGER_DEPTH = 2
+FOOD_ILVL_OFFSET = 10     # food items: ItemLevel = RequiredLevel + 10
 
 
 def _i(row: dict, key: str) -> int:
@@ -273,6 +274,21 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
     def lvl_of(item_ids: list[int]) -> int:
         return min((_i(sparse.get(iid, {}), "RequiredLevel") for iid in item_ids), default=0)
 
+    def food_lvl(item_ids: list[int]) -> int:
+        """Lowest level of the tier's items: RequiredLevel, or for Forever copies with
+        RequiredLevel <= 1 the level derived from ItemLevel (food: ItemLevel = level + 10)."""
+        lvls = []
+        for iid in item_ids:
+            row = sparse.get(iid)
+            if row is None:
+                continue
+            req, ilvl = _i(row, "RequiredLevel"), _i(row, "ItemLevel")
+            lvls.append(max(req, ilvl - FOOD_ILVL_OFFSET) if req <= 1 else req)
+        return min(lvls, default=0)
+
+    def item_name(item_ids: list[int]) -> str | None:
+        return next((n for iid in item_ids if (n := sparse.get(iid, {}).get("Display_lang"))), None)
+
     def food_tiers(sid: int) -> list[Buff]:
         """One FOOD Buff per tier spell passing its value to template `sid` (Forever foods):
         the value replaces every effect's base points of the template."""
@@ -284,8 +300,9 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
             fx = _spell_fx([dict(r, EffectBasePointsF=str(value)) for r in effects.get(sid, [])])
             if not fx:
                 continue  # zero / negative value
-            name, dur = names.get(sid, ""), dur_of(sid)
-            out.append(Buff(id=tier, name=name, cat="FOOD", fx=fx, dur=dur, lvl=lvl_of(ids),
+            # named after its food (the aura id, not the name, matches the player's aura)
+            name, dur = item_name(ids) or names.get(sid, ""), dur_of(sid)
+            out.append(Buff(id=tier, name=name, cat="FOOD", fx=fx, dur=dur, lvl=food_lvl(ids),
                             excl=f"FOOD:{name}", items=ids, burst=0 < dur < BURST_MAX,
                             new=tier not in era_spell_ids, aura=sid))
         return out

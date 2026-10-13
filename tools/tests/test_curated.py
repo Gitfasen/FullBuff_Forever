@@ -110,7 +110,8 @@ def test_curated_yaml_loads():
     # Forever's live world-buff ids (the vanilla ids are dummy auras in Forever DB2)
     assert {i["id"] for i in cur["include"]} >= {1304452, 1304594, 1304690, 24425, 1304751, 1304759, 1304771}
     assert not {i["id"] for i in cur["include"]} & {22888, 16609, 15366, 22817, 22818, 22820}
-    assert len(cur["excl_merge"]) == 14
+    assert len(cur["excl_merge"]) == 15
+    assert ["Rat Familiar", "Frog Familiar", "Cat Familiar"] in cur["excl_merge"]
     assert {1304753, 1304782, 1304780, 1304778, 1304772, 1304775} <= {i["id"] for i in cur["include"]}
 
 
@@ -151,3 +152,54 @@ def test_override_rejects_unknown_category_and_stat_keys():
                           qdata(), AMAP)
     assert (b.cat, b.fx, b.dur) == ("FOOD", {"STR": 5}, 7)
     assert len(warns) == 2 and "SNACK" in warns[0] and "NOPE" in warns[1]
+
+
+def mkfx(id, name, cat, fx, **kw):
+    b = mk(id, name, cat, **kw)
+    b.fx = fx
+    return b
+
+
+def test_stacking_groups_for_exclusive_consumables():
+    buffs = {b.id: b for b in [
+        mkfx(1, "Flask of the Titans", "FLASK", {"HP": 1200}),
+        mkfx(2, "Supreme Power", "FLASK", {"SPELL_DMG": 150}),
+        mkfx(3, "Wizard Oil", "WEAPON", {"SPELL_DMG": 24, "HEAL": 24}),
+        mkfx(4, "Rockbiter Weapon", "CLASS", {"AP": 50}, cls="SHAMAN", enchant=1664, self_only=True),
+        mkfx(5, "Well Fed", "FOOD", {"STA": 10}),
+        mkfx(6, "Kreeg's Stout Beatdown", "FOOD", {"SPI": 25}),
+        mkfx(7, "Elixir of the Mongoose", "ELIXIR", {"AGI": 25, "CRIT": 2, "SPELL_CRIT": 2}),
+        mkfx(8, "Elixir of the Sages", "ELIXIR", {"INT": 18, "SPI": 18}),
+        mkfx(9, "Elixir of the Phalanx", "ELIXIR", {"ARMOR": 500, "HP": 400}),
+        mkfx(10, "Greater Mageblood Elixir", "ELIXIR", {"MP5": 20}),
+        mkfx(11, "Intellect", "SCROLL", {"INT": 16}),
+        mkfx(12, "Arcane Intellect", "CLASS", {"INT": 31}, cls="MAGE"),
+        mkfx(13, "Songflower Serenade", "WORLD", {"STR": 15, "CRIT": 5}),
+        mkfx(14, "Sharpen", "WEAPON", {"CRIT": 2}),
+    ]}
+    assert apply_curated(buffs, [], {}, qdata(), AMAP) == []
+    got = {i: b.excl for i, b in buffs.items()}
+    assert got == {1: "FLASK", 2: "FLASK", 3: "WEAPON", 4: "WEAPON", 5: "FOOD:Well Fed",
+                   6: "FOOD:Well Fed", 7: "ELIXIR:AGI", 8: "ELIXIR:INT", 9: "ELIXIR:ARMOR",
+                   10: "ELIXIR:MP5", 11: "SCROLL:INT", 12: "CLASS:Arcane Intellect",
+                   13: "WORLD:Songflower Serenade", 14: "WEAPON"}
+
+
+def test_excl_merge_overrides_stacking_group_with_own_key():
+    buffs = {b.id: b for b in [
+        mkfx(1, "Rat Familiar", "SCROLL", {"INT": 2}), mkfx(2, "Cat Familiar", "SCROLL", {"INT": 12}),
+        mkfx(3, "Intellect", "SCROLL", {"INT": 16}),
+        mkfx(4, "Rumsey Rum Black Label", "FOOD", {"STA": 15}), mkfx(5, "Well Fed", "FOOD", {"STA": 10}),
+        mkfx(6, "Spirit of Zanza", "ELIXIR", {"SPI": 50, "STA": 50}),
+    ]}
+    cur = {"excl_merge": [["Rat Familiar", "Cat Familiar"], ["Rumsey Rum Black Label"], ["Spirit of Zanza"]]}
+    assert apply_curated(buffs, [], cur, qdata(), AMAP) == []
+    got = {i: b.excl for i, b in buffs.items()}
+    assert got == {1: "SCROLL:Rat Familiar", 2: "SCROLL:Rat Familiar", 3: "SCROLL:INT",
+                   4: "FOOD:Rumsey Rum Black Label", 5: "FOOD:Well Fed", 6: "ELIXIR:Spirit of Zanza"}
+
+
+def test_override_excl_beats_stacking_group():
+    buffs = {1: mkfx(1, "Odd Elixir", "ELIXIR", {"STR": 5})}
+    apply_curated(buffs, [], {"override": {1: {"excl": "ELIXIR:odd"}}}, qdata(), AMAP)
+    assert buffs[1].excl == "ELIXIR:odd"

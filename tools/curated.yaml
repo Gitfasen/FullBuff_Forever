@@ -99,7 +99,10 @@ exclude:
 override:
   25289: {burst: false}  # Battle Shout: 3 min party buff kept up continuously, not a cooldown
 
-# Buffs in one list share one exclusivity group (key = first name's current excl).
+# Buffs in one list share one exclusivity group, keyed "<cat>:<first name>". These explicit
+# groups override the consumable stacking model (one flask, one weapon enchant, one Well Fed
+# food, one elixir / scroll per dominant stat; tools/curated.py stacking_group).
+# A one-name list keeps a consumable in a group of its own.
 # Resistance-only buffs (Shadow Protection, Prayer of Shadow Protection) and Blessing of
 # Salvation have no stat effect and are intentionally absent.
 excl_merge:
@@ -115,6 +118,9 @@ excl_merge:
   - ["Aspect of the Hawk", "Aspect of the Beast"]
   - ["Warchief's Blessing", "Might of Stormwind"]
   - ["Spirit of Zanza", "Permanent Spirit of Zanza"]
+  - ["Rat Familiar", "Frog Familiar", "Cat Familiar"]  # scroll familiars: one pet at a time
+  # Rumsey Rum family (incl. Gordok Green Grog) stacks with Well Fed food in vanilla; no other food
+  # exception is listed because none has documented evidence (Kreeg's stays in Well Fed).
   - ["Rumsey Rum Black Label", "Rumsey Rum", "Rumsey Rum Dark", "Rumsey Rum Light", "Gordok Green Grog"]
   - ["Sayge's Dark Fortune of Armor", "Sayge's Dark Fortune of Strength", "Sayge's Dark Fortune of Agility",
      "Sayge's Dark Fortune of Stamina", "Sayge's Dark Fortune of Intelligence", "Sayge's Dark Fortune of Spirit"]
