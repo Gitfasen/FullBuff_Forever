@@ -1,0 +1,4 @@
+pytest
+pyyaml
+cbor2
+lupa
