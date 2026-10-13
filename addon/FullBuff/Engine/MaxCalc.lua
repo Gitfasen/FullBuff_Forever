@@ -22,14 +22,15 @@ local function round(v, stat)
   return math.floor(v + 0.5)
 end
 
--- Sums flat effects and multiplies percent effects of a list of entries.
+-- Sums flat effects and multiplies percent effects of a list of entries
+-- (useActive: an entry's activeFx, the rank the player has, over its fx).
 -- Different percent buffs are assumed to stack multiplicatively
 -- (e.g. STAT_PCT 10 and STR_PCT 10 -> x1.21); verify in game.
-local function aggregate(entries)
+local function aggregate(entries, useActive)
   local flat, mult = {}, { ARMOR = 1 }
   for _, p in ipairs(PRIMARIES) do mult[p] = 1 end
   for _, e in ipairs(entries) do
-    local fx = e.fx or {}
+    local fx = (useActive and e.activeFx) or e.fx or {}
     for k, v in pairs(fx) do
       if not PCT_KEY[k] then flat[k] = (flat[k] or 0) + v end
     end
@@ -60,7 +61,7 @@ end
 -- entry.recommended) and returns { rows = { {stat, current, max, diff} },
 --   missing = Entry[], missingCount, percentOfMax, stale }
 function MaxCalc:Compute(state, catalog)
-  local stats = state and state.stats or {}
+  local reported = state and state.stats or {}
   catalog = catalog or {}
   ns.Scoring:MarkRecommended(catalog, state)
   local all, chosen, chosenGroup = {}, {}, {}
@@ -75,17 +76,28 @@ function MaxCalc:Compute(state, catalog)
       end
     end
   end
-  -- Only ACTIVE non-burst buffs whose group has a chosen entry are removed from
+  -- An active lower rank (status CAN_ADD, activeFx set: an upgrade) is active too.
+  -- Only active non-burst buffs whose group has a chosen entry are removed from
   -- the baseline. Active burst buffs and active buffs nobody would pick (score 0
   -- for this spec) stay in current AND max, so max is never below current.
-  local active = {}
+  local active, anyActive = {}, {}
   for _, e in ipairs(all) do
-    if e.status == "ACTIVE" and not e.burst and chosenGroup[groupKey(e)] then
+    local isActive = e.status == "ACTIVE" or e.activeFx ~= nil
+    if isActive then anyActive[#anyActive + 1] = e end
+    if isActive and not e.burst and chosenGroup[groupKey(e)] then
       active[#active + 1] = e
     end
   end
 
-  local activeFlat, activeMult = aggregate(active)
+  -- Non-primary stats the client does not report (MP5, HP5): current is the sum
+  -- of the active known buffs' effects, so the usual subtraction stays consistent.
+  local stats = {}
+  for k, v in pairs(reported) do stats[k] = v end
+  for k, v in pairs((aggregate(anyActive, true))) do
+    if stats[k] == nil and not IS_PRIMARY[k] then stats[k] = v end
+  end
+
+  local activeFlat, activeMult = aggregate(active, true)
   local maxFlat, maxMult = aggregate(chosen)
 
   local maxv = {}

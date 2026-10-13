@@ -118,3 +118,36 @@ def test_real_data_build_valid_statuses_and_categories(addon):
       return false
     end)()""")
     assert bad is False, bad
+
+
+FORT = """
+ns.Buffs = {
+  [10938] = {name="Power Word: Fortitude", cat="CLASS", cls="PRIEST", fx={STA=54}, lvl=1, excl="CLASS:Fort", ranks={
+     {spell=1243, lvl=1, fx={STA=3}}, {spell=1244, lvl=12, fx={STA=8}}, {spell=1245, lvl=24, fx={STA=20}},
+     {spell=2791, lvl=36, fx={STA=32}}, {spell=10937, lvl=48, fx={STA=43}}, {spell=10938, lvl=60, fx={STA=54}}}},
+}
+"""
+
+
+def fort(addon, aura, level=60):
+    a = build(addon, "{class='WARRIOR', level=%d, active={[10938]=true}, activeAura={[10938]=%d}}"
+              % (level, aura), FORT)
+    return a, a.eval("ns.Catalog:Build(ns.__s).CLASS[1]")
+
+
+def test_active_lower_rank_is_upgrade_with_active_rank_fx(addon):
+    # rank 3 (STA 20) active, rank 6 (STA 54) available at 60 -> upgrade available
+    _, e = fort(addon, 1245)
+    assert e["status"] == "CAN_ADD" and e["rankSpell"] == 10938
+    assert e["fx"]["STA"] == 54 and e["activeFx"]["STA"] == 20
+
+
+def test_active_top_rank_stays_active(addon):
+    _, e = fort(addon, 10938)
+    assert e["status"] == "ACTIVE" and e["activeFx"]["STA"] == 54
+
+
+def test_active_rank_at_best_for_level_stays_active(addon):
+    # level 30: best rank allowed is rank 4 (lvl 36 - 10 slack); rank 4 active -> ACTIVE
+    _, e = fort(addon, 2791, level=30)
+    assert e["status"] == "ACTIVE" and e["activeFx"]["STA"] == 32

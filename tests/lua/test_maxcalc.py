@@ -284,3 +284,43 @@ def test_percent_skips_zero_max_and_empty_is_100(addon):
     r = res["rows"][1]
     assert (r["stat"], r["current"], r["max"], r["diff"]) == ("HIT", 0, 0, 0)
     assert res["percentOfMax"] == 100 and res["missingCount"] == 0
+
+
+def test_active_lower_rank_subtracts_its_own_fx_and_counts_as_missing(addon):
+    # Fortitude rank 3 (STA 20) active, rank 6 (STA 54) chosen. STA 80 includes the 20:
+    # base 60 -> max 60 + 54 = 114; HP 800 - 0 + 34*10 = 1140 (derived from the STA delta).
+    _, res, rows, _, missing = compute(addon, make_state(), """
+      (function() local e = E(7, "CLASS", "Fortitude", "fort", {STA=54}, "CAN_ADD")
+        e.activeFx = {STA=20}; return e end)(),
+    """)
+    assert rows["STA"][:2] == (80, 114)
+    assert rows["HP"][:2] == (800, 1140)
+    assert missing == [7]
+
+
+def _healer(addon, entries):
+    a = addon()
+    a.run("ns.Weights = {PRIEST = {{HEAL=1, MP5=2.5}, {HEAL=1}, {HEAL=1}}}")
+    a.run("__ns.__st = {class='PRIEST', spec=1, level=60, stale=false, active={}, unknownAuras={},"
+          " stats={STR=30, AGI=30, STA=60, INT=150, SPI=150, HEAL=300}, ratios={hpPerSta=10, manaPerInt=15}}")
+    a.run(ENTRY_FN + "__ns.__cat = {order={'CLASS'}, CLASS={%s}}" % entries)
+    res = a.eval("ns.MaxCalc:Compute(__ns.__st, __ns.__cat)")
+    return {r["stat"]: (r["current"], r["max"]) for r in res["rows"].values()}
+
+
+def test_unreported_mp5_current_is_active_known_fx(addon):
+    # The client reports no MP5: current = Blessing of Wisdom's 30 (active), the best
+    # in its group, so max = 30 - 30 + 30 = 30, never 0.
+    rows = _healer(addon, 'E(1, "CLASS", "Blessing of Wisdom", "wis", {MP5=30}, "ACTIVE")')
+    assert rows["MP5"] == (30, 30)
+
+
+def test_unreported_mp5_active_weaker_replaced_by_best(addon):
+    # active 20 (lower blessing), best 30 in the same group; an unrelated active 5 stays
+    # current 25 -> max 25 - 20 + 30 = 35
+    rows = _healer(addon, """
+      E(1, "CLASS", "Weak", "wis", {MP5=20}, "ACTIVE"),
+      E(2, "CLASS", "Strong", "wis", {MP5=30}),
+      E(3, "CLASS", "Other", "other", {MP5=5}, "ACTIVE", true),
+    """)
+    assert rows["MP5"] == (25, 35)

@@ -31,6 +31,14 @@ local function pickRank(id, buff, level)
   return lowest.spell or id, lowest.fx or buff.fx, false
 end
 
+-- The fx and level of the rank the player actually has (state.activeAura names it).
+local function activeRank(id, buff, auraSpell)
+  for _, r in ipairs(buff.ranks or {}) do
+    if r.spell == auraSpell then return r.fx or buff.fx, rankLvl(r) end
+  end
+  return buff.fx, nil
+end
+
 local function byNameThenId(a, b)
   if a.name ~= b.name then return a.name < b.name end
   return a.id < b.id
@@ -43,9 +51,18 @@ function Catalog:Build(state)
     local cat = buff.cat
     if cat and KNOWN[cat] and not (cat == "CLASS" and buff.selfOnly and buff.cls ~= state.class) then
       local rankSpell, fx, allowed = pickRank(id, buff, level)
-      local status
+      local status, activeFx
       if state.active and state.active[id] then
         status = "ACTIVE"
+        local auraSpell = state.activeAura and state.activeAura[id]
+        local rlvl
+        activeFx, rlvl = activeRank(id, buff, auraSpell)
+        if rlvl and allowed and auraSpell ~= rankSpell then
+          -- a lower rank is up; the best rank for this level is an upgrade to add
+          for _, r in ipairs(buff.ranks) do
+            if r.spell == rankSpell and rankLvl(r) > rlvl then status = "CAN_ADD" end
+          end
+        end
       elseif allowed then
         status = "CAN_ADD"
       else
@@ -59,7 +76,7 @@ function Catalog:Build(state)
       list[#list + 1] = {
         id = id, name = buff.name or tostring(id), cat = cat, fx = fx,
         lvl = buff.lvl, excl = buff.excl, burst = buff.burst,
-        status = status, rankSpell = rankSpell,
+        status = status, rankSpell = rankSpell, activeFx = activeFx,
       }
     end
   end
