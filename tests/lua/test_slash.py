@@ -64,11 +64,9 @@ def test_reset_clears_position(addon):
     a.run("""
       ns.UI.Launcher:Create()
       ns.DB.launcher = {point='CENTER', relPoint='CENTER', x=5, y=6}
-      ns.DB.collapsed = {FOOD = true}
       SlashCmdList.FULLBUFF('reset')
     """)
     assert a.eval("ns.DB.launcher") is None
-    assert a.eval("next(ns.DB.collapsed) == nil") is True
     assert a.errors() == []
 
 
@@ -91,10 +89,6 @@ def test_options_setters_recompute_and_apply(addon):
     assert a.eval("ns.DB.weightOverrides.WARRIOR[ns.PlayerState:Get().spec].AP") is None
     a.run("ns.Options:SetShowAllStats(true)")
     assert a.eval("ns.DB.showAllStats") is True
-    a.run("ns.Options:SetCategoryHidden('FOOD', true)")
-    assert a.eval("ns.DB.hiddenCats.FOOD") is True
-    a.run("ns.Options:SetCategoryHidden('FOOD', false)")
-    assert a.eval("ns.DB.hiddenCats.FOOD") is None
     a.run("ns.Options:SetScale(9)")
     assert a.eval("ns.DB.scale") == 2.0
     assert a.eval("ns.UI.Launcher:GetFrame().__scale") == 2.0

@@ -255,3 +255,19 @@ Settings = {
   RegisterAddOnCategory = function(cat) cat.registered = true end,
   OpenToCategory = function(id) __settings.opened[#__settings.opened + 1] = id end,
 }
+
+-- Static popups: StaticPopup_Show records into __popups.shown; __accept_popup()
+-- runs OnAccept(frame, data) of the last shown dialog (tests only).
+StaticPopupDialogs = {}
+__popups = { shown = {} }
+function StaticPopup_Show(which, arg1, arg2, data)
+  local dlg = StaticPopupDialogs[which]
+  if not dlg then return nil end
+  __popups.shown[#__popups.shown + 1] = { which = which, arg1 = arg1, arg2 = arg2, data = data }
+  return newFrame("Frame", "StaticPopup" .. #__popups.shown)
+end
+function __accept_popup()
+  local p = __popups.shown[#__popups.shown]
+  local dlg = p and StaticPopupDialogs[p.which]
+  if dlg and dlg.OnAccept then dlg.OnAccept(newFrame("Frame"), p.data) end
+end
