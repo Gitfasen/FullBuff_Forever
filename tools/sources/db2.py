@@ -8,7 +8,7 @@ DB2_TABLES = [
     "SpellName", "Spell", "SpellEffect", "SpellMisc", "SpellDuration",
     "SpellLevels", "SpellClassOptions", "SpellCategories", "SkillLineAbility",
     "ItemEffect", "ItemXItemEffect", "Item", "ItemSparse",
-    "SpellItemEnchantment", "UiMapAssignment",
+    "SpellItemEnchantment", "UiMapAssignment", "SkillLine",
 ]
 
 URL_TEMPLATE = "https://wago.tools/db2/{table}/csv?build={build}"

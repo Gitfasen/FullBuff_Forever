@@ -37,6 +37,6 @@ def test_read_table_returns_dicts():
 
 
 def test_db2_tables_list():
-    assert len(DB2_TABLES) == 15
+    assert len(DB2_TABLES) == 16
     assert DB2_TABLES[0] == "SpellName"
-    assert DB2_TABLES[-1] == "UiMapAssignment"
+    assert DB2_TABLES[-1] == "SkillLine"
