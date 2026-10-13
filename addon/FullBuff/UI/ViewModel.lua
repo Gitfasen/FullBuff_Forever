@@ -123,23 +123,23 @@ function VM:Build(state, catalog)
 
   local sections = {}
   for _, cat in ipairs(catalog.order or {}) do
-   if not (DB.hiddenCats and DB.hiddenCats[cat]) then
-    local entries = catalog[cat] or {}
-    local sec = { cat = cat, title = L["CATEGORY_" .. cat], activeCount = 0, total = 0,
-                  collapsed = (DB.collapsed and DB.collapsed[cat]) and true or false, items = {} }
-    for _, e in ipairs(entries) do
-      if e.status == "ACTIVE" then sec.activeCount = sec.activeCount + 1 end
-      if e.status ~= "UNAVAILABLE" then sec.total = sec.total + 1 end
-      if not DB.onlyMissing or e.status == "CAN_ADD" then
-        sec.items[#sec.items + 1] = {
-          id = e.id, icon = iconFor(e.rankSpell or e.id), name = e.name,
-          valueText = VM.FormatFx(e.fx), status = e.status, recommended = e.recommended and true or false,
-        }
+    if not (DB.hiddenCats and DB.hiddenCats[cat]) then
+      local entries = catalog[cat] or {}
+      local sec = { cat = cat, title = L["CATEGORY_" .. cat], activeCount = 0, total = 0,
+                    collapsed = (DB.collapsed and DB.collapsed[cat]) and true or false, items = {} }
+      for _, e in ipairs(entries) do
+        if e.status == "ACTIVE" then sec.activeCount = sec.activeCount + 1 end
+        if e.status ~= "UNAVAILABLE" then sec.total = sec.total + 1 end
+        if not DB.onlyMissing or e.status == "CAN_ADD" then
+          sec.items[#sec.items + 1] = {
+            id = e.id, icon = iconFor(e.rankSpell or e.id), name = e.name,
+            valueText = VM.FormatFx(e.fx), status = e.status, recommended = e.recommended and true or false,
+          }
+        end
       end
+      sortItems(sec.items)
+      if #sec.items > 0 then sections[#sections + 1] = sec end
     end
-    sortItems(sec.items)
-    if #sec.items > 0 then sections[#sections + 1] = sec end
-   end
   end
 
   local names = {}

@@ -15,7 +15,7 @@ local function usage()
   end
 end
 
-local function debug()
+local function showDebug()
   local L = ns.L
   local state = ns.PlayerState:Get()
   say("FullBuff: " .. string.format(L.DEBUG_STALE, state.stale and L.DEBUG_YES or L.DEBUG_NO))
@@ -46,10 +46,10 @@ local function handler(msg)
         if l.code == rest then say("FullBuff: " .. string.format(ns.L.SLASH_LANG_SET, l.label)) end
       end
     else
-      say(ns.L.SLASH_USAGE_LANG)
+      say("FullBuff: " .. ns.L.SLASH_USAGE_LANG)
     end
   elseif cmd == "debug" then
-    debug()
+    showDebug()
   elseif cmd == "reset" then
     ns.Options:ResetLayout()
     say("FullBuff: " .. ns.L.SLASH_RESET_DONE)

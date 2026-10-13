@@ -95,8 +95,6 @@ L.ZONE_UNKNOWN = "Unknown zone"
 
 L.OPT_SPEC_FMT = "Specialization tree %d"
 L.OPT_WEIGHTS_HINT = "Leave empty to use the default weight."
-L.OPT_CATEGORIES_HINT = "Checked categories are shown in the window."
-L.OPT_SCALE_HINT = "Size of the round button."
 L.SLASH_USAGE_TOGGLE = "/fullbuff - open or close the window"
 L.SLASH_USAGE_OPTIONS = "/fullbuff options - open the settings"
 L.SLASH_USAGE_LANG = "/fullbuff lang en|uk - change the language"

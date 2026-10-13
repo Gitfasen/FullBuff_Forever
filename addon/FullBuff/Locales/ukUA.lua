@@ -95,8 +95,6 @@ L.ZONE_UNKNOWN = "Невідома зона"
 
 L.OPT_SPEC_FMT = "Гілка талантів %d"
 L.OPT_WEIGHTS_HINT = "Залиште порожнім, щоб використати типову вагу."
-L.OPT_CATEGORIES_HINT = "Позначені категорії показуються у вікні."
-L.OPT_SCALE_HINT = "Розмір круглої кнопки."
 L.SLASH_USAGE_TOGGLE = "/fullbuff - відкрити або закрити вікно"
 L.SLASH_USAGE_OPTIONS = "/fullbuff options - відкрити налаштування"
 L.SLASH_USAGE_LANG = "/fullbuff lang en|uk - змінити мову"

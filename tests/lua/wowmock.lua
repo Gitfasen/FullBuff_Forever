@@ -62,7 +62,8 @@ function frameMethods:GetRight() return 550 end
 function frameMethods:GetTop() return 420 end
 function frameMethods:GetBottom() return 380 end
 function frameMethods:GetEffectiveScale() return 1 end
-function frameMethods:GetScale() return 1 end
+function frameMethods:GetScale() return self.__scale or 1 end
+function frameMethods:SetScale(v) self.__scale = v end
 function frameMethods:SetText(t) self.__text = t end
 function frameMethods:SetTexture(t) self.__texture = t end
 function frameMethods:GetText() return self.__text end

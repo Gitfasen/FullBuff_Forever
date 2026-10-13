@@ -47,6 +47,10 @@ function Options:SetWeight(stat, value)
   local class, spec = state.class, state.spec or 1
   local d = db()
   value = tonumber(value)
+  if value and (value ~= value or value == math.huge or value == -math.huge) then
+    Options:Refresh() -- reject non-finite input, show the stored value again
+    return
+  end
   if value == nil then
     local t = d.weightOverrides and d.weightOverrides[class]
     t = t and t[spec]
@@ -58,6 +62,7 @@ function Options:SetWeight(stat, value)
     d.weightOverrides[class][spec][stat] = value
   end
   recompute()
+  Options:Refresh()
 end
 
 function Options:SetCategoryHidden(cat, hidden)
@@ -123,6 +128,7 @@ local texts = {} -- { fs, key }
 local specButtons, catChecks, langButtons, weightRows = {}, {}, {}, {}
 local allStatsCheck, scaleSlider, scaleLabel, resetButton
 local warned = false
+local built = false
 
 local function addText(key, template, x, y)
   local fs = panel:CreateFontString(nil, "ARTWORK", template)
@@ -163,8 +169,8 @@ local function refreshWeights()
       row.box:SetSize(60, 20)
       row.box:SetPoint("TOPLEFT", panel, "TOPLEFT", 200, -196 - (i - 1) * 24)
       row.box:SetAutoFocus(false)
-      row.box:SetScript("OnEnterPressed", function(self)
-        self:ClearFocus()
+      row.box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+      row.box:SetScript("OnEditFocusLost", function(self)
         local t = self:GetText()
         Options:SetWeight(self.fbStat, t ~= "" and t or nil)
       end)
@@ -184,7 +190,7 @@ local function refreshWeights()
 end
 
 function Options:Refresh()
-  if not panel then return end
+  if not built then return end
   for _, t in ipairs(texts) do t.fs:SetText(ns.L[t.key]) end
   local cur = charDb().specOverride or 0
   for i = 0, 3 do
@@ -208,8 +214,7 @@ function Options:Refresh()
   refreshWeights()
 end
 
-function Options:Build()
-  if panel then return panel end
+local function buildPanel()
   panel = CreateFrame("Frame", "FullBuffOptionsPanel", UIParent)
   panel.name = "FullBuff"
 
@@ -255,6 +260,7 @@ function Options:Build()
 
   -- Weights (left column, below)
   addText("OPT_WEIGHTS", "GameFontNormal", 16, -184)
+  addText("OPT_WEIGHTS_HINT", "GameFontHighlightSmall", 120, -186)
 
   -- Categories and all-stats (right column)
   addText("OPT_CATEGORIES", "GameFontNormal", 320, -184)
@@ -277,31 +283,58 @@ function Options:Build()
   resetButton:SetScript("OnClick", function() Options:ResetPosition() end)
 
   panel:SetScript("OnShow", function() Options:Refresh() end)
+  built = true
   Options:Refresh()
+end
+
+-- Build() is all-or-nothing: on error the half-built state is dropped and the
+-- error is re-raised, so panel is only set once every widget exists.
+function Options:Build()
+  if built then return panel end
+  local ok, err = pcall(buildPanel)
+  if not ok then
+    panel, built, resetButton, allStatsCheck, scaleSlider, scaleLabel = nil, false, nil, nil, nil, nil
+    texts, specButtons, catChecks, langButtons, weightRows = {}, {}, {}, {}, {}
+    error(err, 0)
+  end
   return panel
+end
+
+local function report(err)
+  local msg = ns.L.SETTINGS_UNAVAILABLE .. (err and (" (" .. tostring(err) .. ")") or "")
+  print("FullBuff: " .. msg)
 end
 
 local function register()
   if category then return end
   if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then return end
-  local ok, cat = pcall(function()
+  local ok, res = pcall(function()
     local c = Settings.RegisterCanvasLayoutCategory(Options:Build(), "FullBuff")
     Settings.RegisterAddOnCategory(c)
     return c
   end)
-  if ok then category = cat end
+  if ok then
+    category = res
+  else
+    geterrorhandler()("FullBuff options: " .. tostring(res))
+    report(res)
+  end
 end
 
 function ns.UI.OpenOptions()
   if not (Settings and Settings.OpenToCategory) then
     if not warned then
       warned = true
-      print("FullBuff: " .. ns.L.SETTINGS_UNAVAILABLE)
+      report()
     end
     return
   end
   register()
-  if category then Settings.OpenToCategory(category:GetID()) end
+  if category then
+    Settings.OpenToCategory(category:GetID())
+  else
+    report()
+  end
 end
 
 ns.Events:On("FULLBUFF_LOADED", register)

@@ -114,6 +114,7 @@ def test_options_setters_recompute_and_apply(addon):
     assert a.eval("ns.DB.hiddenCats.FOOD") is None
     a.run("ns.Options:SetScale(9)")
     assert a.eval("ns.DB.scale") == 2.0
+    assert a.eval("ns.UI.Launcher:GetFrame().__scale") == 2.0
     a.run("ns.Options:SetScale(0.1)")
     assert a.eval("ns.DB.scale") == 0.5
     assert a.errors() == []
@@ -138,3 +139,54 @@ def test_no_settings_api_is_guarded(addon):
     a.run("ns.UI.OpenOptions(); ns.UI.OpenOptions()")
     assert a.errors() == []
     assert len(printed) == 1
+
+
+def test_weight_override_changes_recommendation(addon):
+    a = loaded(addon)
+    a.run("""
+      ns.Weights = {WARRIOR = {{AP=1}, {AP=1}, {AP=1}}}
+      local function E(id, name, fx)
+        return {id=id, cat="FOOD", name=name, excl="food", fx=fx, status="CAN_ADD"}
+      end
+      local function rec()
+        local cat = {order = {"FOOD"}, FOOD = {E(1, "A", {AP=10}), E(2, "B", {HIT=10})}}
+        local st = {class="WARRIOR", spec=1, level=60, active={}, stats={AP=100, HIT=0},
+                    unknownAuras={}, ratios={apPerStr=2, hpPerSta=10, manaPerInt=15}}
+        local vm = ns.ViewModel:Build(st, cat)
+        for _, it in ipairs(vm.sections[1].items) do if it.recommended then return it.id end end
+      end
+      __ns.r1 = rec()
+      ns.Options:SetWeight('HIT', 5)
+      __ns.r2 = rec()
+    """)
+    assert a.eval("__ns.r1") == 1 and a.eval("__ns.r2") == 2
+
+
+def test_show_all_stats_changes_rows(addon):
+    a = loaded(addon)
+    a.run("""
+      __ns.n1 = #ns.ViewModel:Build().header.rows
+      ns.Options:SetShowAllStats(true)
+      __ns.n2 = #ns.ViewModel:Build().header.rows
+    """)
+    assert a.eval("__ns.n2") > a.eval("__ns.n1")
+
+
+def test_weight_rejects_nonfinite(addon):
+    a = loaded(addon)
+    a.run("ns.Options:SetWeight('AP', 2); ns.Options:SetWeight('AP', tonumber('1e999'))")
+    assert a.eval("ns.DB.weightOverrides.WARRIOR[1].AP") == 2
+    assert a.errors() == []
+
+
+def test_build_failure_reported_and_safe(addon):
+    printed = []
+    a = addon(mocks={"print": lambda *args: printed.append(args)})
+    a.mock("CreateFrame", None)  # make Build throw on first widget
+    a.load_addon()
+    assert len(a.errors()) >= 1
+    assert len(printed) >= 1
+    a.run("ns.UI.OpenOptions()")
+    assert len(printed) >= 2
+    a.run("ns.Events:Fire('FULLBUFF_LANGUAGE', 'uk'); ns.Options:Refresh()")
+    assert a.eval("#__settings.categories") == 0
