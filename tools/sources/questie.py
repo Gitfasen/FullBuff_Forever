@@ -136,6 +136,23 @@ def _locations(spawns, amap, first_per_zone=False):
     return out
 
 
+KEEP_SOURCE_KINDS = {"craft", "camping"}
+
+
+def drop_unobtainable(buffs: dict[int, Buff], q: QuestieData, keep: set[int]) -> list[Buff]:
+    """Remove item buffs whose items are all absent from QuestieDB_Forever and that have no
+    craft/camping source and are not curated (`keep`); return them, sorted by id."""
+    dropped = []
+    for bid in sorted(buffs):
+        b = buffs[bid]
+        if not b.items or bid in keep or any(i in q.items for i in b.items):
+            continue
+        if any(s.kind in KEEP_SOURCE_KINDS for s in b.sources):
+            continue
+        dropped.append(buffs.pop(bid))
+    return dropped
+
+
 def attach_sources(buffs: dict[int, Buff], q: QuestieData, amap: dict[int, int]) -> None:
     for buff in buffs.values():
         seen = {(s.kind, s.name, s.mapID, s.x, s.y) for s in buff.sources}

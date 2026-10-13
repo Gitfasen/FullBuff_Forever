@@ -95,3 +95,11 @@ def test_report_sections(tmp_path):
     for needle in ["ELIXIR: 1", "Odd\\|Thing", "warn one", "Camp X", "4392",
                    "Camp Y (exclusive with Blessing)", "craft source: 3"]:
         assert needle in text
+
+
+def test_report_lists_unobtainable(tmp_path):
+    gone = Buff(461224, "Demon-Tainted Blood", "TRINKET", {"AP": 1}, 20, 0, "", [228078], True, False)
+    write_report({}, [], [], [], [], tmp_path / "r.md", unobtainable=[gone])
+    text = (tmp_path / "r.md").read_text(encoding="utf-8")
+    assert "## Excluded as unobtainable (1)" in text
+    assert "- 461224 Demon-Tainted Blood [TRINKET] items 228078" in text

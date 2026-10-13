@@ -120,7 +120,7 @@ def _cell(s: str) -> str:
 def write_report(buffs: dict[int, Buff], unclassified: list[Buff], warnings: list[str],
                  unmatched_camps: list[str], crosscheck: list[int], path: Path,
                  unresolved_exclusives: list[tuple[str, str]] = (),
-                 craft_count: int | None = None) -> None:
+                 craft_count: int | None = None, unobtainable: list[Buff] = ()) -> None:
     out = ["# FullBuff build report", "", "## Counts per category", ""]
     counts = Counter(b.cat for b in buffs.values())
     out += [f"- {cat}: {n}" for cat, n in sorted(counts.items(), key=lambda kv: str(kv[0]))]
@@ -142,6 +142,9 @@ def write_report(buffs: dict[int, Buff], unclassified: list[Buff], warnings: lis
     section("Unmatched camp buffs", [f"- {n}" for n in unmatched_camps])
     section("Unresolved camp exclusives", [f"- {n} (exclusive with {e})" for n, e in unresolved_exclusives])
     section("Cross-check misses (consumable item ids not in any buff)", [f"- {i}" for i in crosscheck])
+    section("Excluded as unobtainable",
+            [f"- {b.id} {b.name} [{b.cat}] items {', '.join(str(i) for i in b.items)}"
+             for b in sorted(unobtainable, key=lambda b: b.id)])
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")

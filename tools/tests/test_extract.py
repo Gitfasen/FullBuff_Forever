@@ -8,15 +8,21 @@ def eff(spell, aura, value, misc=0, effect=6, trigger=0, period=0):
             "EffectTriggerSpell": str(trigger), "EffectAuraPeriod": str(period)}
 
 
-def tables(spells, effects, durations, items=(), class_sets=None, levels=None, enchants=(), learn=None):
+def tables(spells, effects, durations, items=(), class_sets=None, levels=None, enchants=(), learn=None,
+           attrs=None, class_masks=None):
     """spells: {id: name}; durations: {spell_id: seconds};
     items: (id, class, sub, inv, reqlevel, [spell ids][, item name]);
-    learn: {spell_id: AcquireMethod} trainer rows on a class skill line (default: every class_sets spell, 0)."""
+    learn: {spell_id: AcquireMethod} trainer rows on a class skill line (default: every class_sets spell, 0);
+    attrs: {spell_id: SpellMisc.Attributes_0}; class_masks: {spell_id: SkillLineAbility.ClassMask}."""
+    learn = dict(learn if learn is not None else {s: 0 for s in (class_sets or {})})
+    for s in class_masks or {}:
+        learn.setdefault(s, 0)
     t = {
         "SpellName": [{"ID": str(i), "Name_lang": n} for i, n in spells.items()],
         "SpellEffect": effects,
         "SpellDuration": [{"ID": str(i + 1), "Duration": str(s * 1000)} for i, s in enumerate(durations.values())],
-        "SpellMisc": [{"SpellID": str(sp), "DifficultyID": "0", "DurationIndex": str(i + 1)}
+        "SpellMisc": [{"SpellID": str(sp), "DifficultyID": "0", "DurationIndex": str(i + 1),
+                       "Attributes_0": str((attrs or {}).get(sp, 0))}
                       for i, sp in enumerate(durations)],
         "SpellClassOptions": [{"SpellID": str(s), "SpellClassSet": str(c)} for s, c in (class_sets or {}).items()],
         "SpellLevels": [{"SpellID": str(s), "DifficultyID": "0", "SpellLevel": str(lv)}
@@ -24,9 +30,9 @@ def tables(spells, effects, durations, items=(), class_sets=None, levels=None, e
         "Item": [], "ItemSparse": [], "ItemEffect": [], "ItemXItemEffect": [],
         "SpellItemEnchantment": list(enchants),
         "SkillLine": [{"ID": "1", "CategoryID": "7"}],
-        "SkillLineAbility": [{"Spell": str(s), "SkillLine": "1", "AcquireMethod": str(a)}
-                             for s, a in (learn if learn is not None
-                                          else {s: 0 for s in (class_sets or {})}).items()],
+        "SkillLineAbility": [{"Spell": str(s), "SkillLine": "1", "AcquireMethod": str(a),
+                              "ClassMask": str((class_masks or {}).get(s, 0))}
+                             for s, a in learn.items()],
     }
     n = 0
     for iid, cls, sub, inv, req, sp_ids, *name in items:
@@ -205,12 +211,17 @@ def test_crit_aura_290_is_melee_and_spell():
     assert extract_buffs(t, set())[1][0].fx == {"CRIT": 3, "SPELL_CRIT": 3}
 
 
-def test_stat_pct_only_for_all_stats():
-    t = tables({20217: "Blessing of Kings", 1304753: "Mol'dar's Moxie"},
-               [eff(20217, 137, 10, misc=-1), eff(1304753, 137, 15, misc=2)],
-               {20217: 3600, 1304753: 7200}, class_sets={20217: 10})
+def test_percent_stat_auras():
+    # 137 / 80 with misc -1 = all stats; a single stat index = that stat's percent key.
+    t = tables({20217: "Blessing of Kings", 1304753: "Mol'dar's Moxie", 1304782: "Sayge's Dark Fortune of Strength",
+                9: "All Percent"},
+               [eff(20217, 137, 10, misc=-1), eff(1304753, 137, 15, misc=2), eff(1304782, 80, 10, misc=0),
+                eff(9, 80, 5, misc=-1)],
+               {20217: 3600, 1304753: 7200, 1304782: 7200, 9: 7200}, class_sets={20217: 10})
     buffs, unclassified = extract_buffs(t, set())
-    assert buffs[20217].fx == {"STAT_PCT": 10} and unclassified == []
+    assert buffs[20217].fx == {"STAT_PCT": 10}
+    assert {b.id: b.fx for b in unclassified} == {1304753: {"STA_PCT": 15}, 1304782: {"STR_PCT": 10},
+                                                 9: {"STAT_PCT": 5}}
 
 
 def test_armor_pct_aura_101():
@@ -236,16 +247,86 @@ def test_effects_on_pet_ignored():
     assert extract_buffs(t, set()) == ({}, [])
 
 
-def test_value_passed_by_trigger_aura_227_sets_food_value_top_tier():
+def _food_tiers(cls=0, sub=5, low=1):
     # Forever foods: "Nutritious Food" passes its value to a shared "Well Fed" template (bp 1)
-    # through aura 227; the strongest tier is kept with its own items and level.
-    t = tables({1248401: "Nutritious Food", 1248380: "Nutritious Food", 1131: "Food", 1248422: "Well Fed"},
-               [eff(1248401, 0, 0, effect=64, trigger=1131), eff(1248401, 227, 20, trigger=1248422),
-                eff(1248380, 0, 0, effect=64, trigger=1131), eff(1248380, 227, 1, trigger=1248422),
-                eff(1131, 84, 358), eff(1248422, 29, 1, misc=0)],
-               {1248401: 10, 1248380: 10, 1131: 30, 1248422: 900},
-               items=[(20452, 0, 5, 0, 45, [1248401]), (2681, 0, 5, 0, 1, [1248380])])
+    # through aura 227 (PERIODIC_TRIGGER_SPELL_WITH_VALUE).
+    return tables({1248401: "Nutritious Food", 1248380: "Nutritious Food", 1131: "Food", 1248422: "Well Fed"},
+                  [eff(1248401, 0, 0, effect=64, trigger=1131), eff(1248401, 227, 20, trigger=1248422),
+                   eff(1248380, 0, 0, effect=64, trigger=1131), eff(1248380, 227, low, trigger=1248422),
+                   eff(1131, 84, 358), eff(1248422, 29, 1, misc=0), eff(1248422, 29, 1, misc=2)],
+                  {1248401: 10, 1248380: 10, 1131: 30, 1248422: 900},
+                  items=[(20452, cls, sub, 0, 45, [1248401]), (2681, cls, sub, 0, 1, [1248380])])
+
+
+def test_food_tiers_are_separate_buffs_with_own_value_level_and_items():
+    buffs, unclassified = extract_buffs(_food_tiers(), {1248422})
+    assert sorted(buffs) == [1248380, 1248401] and unclassified == []
+    hi, lo = buffs[1248401], buffs[1248380]
+    assert (hi.name, hi.cat, hi.fx) == ("Well Fed", "FOOD", {"STR": 20, "STA": 20})
+    assert (hi.items, hi.lvl, hi.dur) == ([20452], 45, 900)
+    assert (lo.fx, lo.items, lo.lvl) == ({"STR": 1, "STA": 1}, [2681], 1)
+    assert hi.excl == lo.excl == "FOOD:Well Fed"
+    assert hi.new is True and hi.burst is False
+
+
+def test_food_tier_with_non_positive_value_dropped():
+    buffs, _ = extract_buffs(_food_tiers(low=0), set())
+    assert sorted(buffs) == [1248401]
+
+
+def test_value_pass_through_only_for_food():
+    # the same wiring on a potion keeps the template's own values under the template id
+    buffs, _ = extract_buffs(_food_tiers(cls=0, sub=1), set())
+    assert list(buffs) == [1248422] and buffs[1248422].fx == {"STR": 1, "STA": 1}
+    assert buffs[1248422].cat == "POTION"
+
+
+def test_short_mana_or_health_channel_dropped_in_any_category():
+    # e.g. Drink 1135 on a non-food item, Dreamless Sleep, Second Wind, Dark Sacrifice
+    t = tables({1135: "Drink", 15822: "Dreamless Sleep", 1277328: "Dark Sacrifice", 17627: "Distilled Wisdom"},
+               [eff(1135, 24, 10, misc=0, period=1000), eff(15822, 84, 50), eff(1277328, 24, 320, period=3000),
+                eff(17627, 418, 2000)],
+               {1135: 30, 15822: 12, 1277328: 15, 17627: 7200},
+               items=[(4696, 4, 0, 12, 1, [1135]), (12190, 0, 1, 0, 1, [15822]), (13511, 0, 3, 0, 50, [17627])],
+               class_sets={1277328: 6})
     buffs, unclassified = extract_buffs(t, set())
-    b = buffs[1248422]
-    assert (b.cat, b.fx, b.items, b.lvl) == ("FOOD", {"STR": 20}, [20452], 45)
-    assert list(buffs) == [1248422] and unclassified == []
+    assert list(buffs) == [17627] and unclassified == []
+
+
+def test_own_class_toggle_with_no_duration_is_class_buff():
+    # Aspect of the Hawk: no duration, not passive, Effect 6 on the caster
+    t = tables({13165: "Aspect of the Hawk", 25296: "Aspect of the Hawk"},
+               [eff(13165, 124, 20) | {"ImplicitTarget_0": "1"}, eff(25296, 124, 120) | {"ImplicitTarget_0": "1"}],
+               {13165: -1, 25296: -1}, class_sets={13165: 9, 25296: 9}, levels={13165: 10, 25296: 60})
+    b = extract_buffs(t, set())[0][25296]
+    assert (b.cat, b.cls, b.fx, b.dur, b.burst, b.lvl) == ("CLASS", "HUNTER", {"RAP": 120}, 0, False, 10)
+
+
+def test_passive_and_area_toggles_excluded():
+    t = tables({5000: "Passive Thing", 1032: "Devotion Aura"},
+               [eff(5000, 99, 10) | {"ImplicitTarget_0": "1"}, eff(1032, 674, 505, misc=1, effect=35)],
+               {5000: -1, 1032: -1}, class_sets={5000: 4, 1032: 10}, attrs={5000: 0x40})
+    assert extract_buffs(t, set()) == ({}, [])
+
+
+def test_shaman_imbue_effect_360_is_class_buff():
+    # Forever Rockbiter Weapon: no class set; class from the trainer row's ClassMask (64 = shaman);
+    # Effect 360 names the enchant, whose equip spell carries the attack power.
+    ench = [{"ID": "1664", "Duration": "3600", "Effect_0": "3", "EffectArg_0": "16313", "EffectPointsMin_0": "0",
+             "Effect_1": "0", "EffectArg_1": "0", "EffectPointsMin_1": "0",
+             "Effect_2": "0", "EffectArg_2": "0", "EffectPointsMin_2": "0"}]
+    t = tables({16316: "Rockbiter Weapon", 16313: "Rockbiter 7"},
+               [eff(16316, 0, 1800, misc=1664, effect=360), eff(16313, 99, 72)],
+               {16316: 0, 16313: 0}, levels={16316: 54}, enchants=ench, class_masks={16316: 64})
+    b = extract_buffs(t, set())[0][16316]
+    assert (b.cat, b.cls, b.fx, b.enchant, b.dur, b.burst) == ("CLASS", "SHAMAN", {"AP": 72}, 1664, 3600, False)
+
+
+def test_item_imbue_effect_360_is_weapon():
+    ench = [{"ID": "7000", "Duration": "1800", "Effect_0": "5", "EffectArg_0": "4", "EffectPointsMin_0": "8",
+             "Effect_1": "0", "EffectArg_1": "0", "EffectPointsMin_1": "0",
+             "Effect_2": "0", "EffectArg_2": "0", "EffectPointsMin_2": "0"}]
+    t = tables({9100: "Imbue Striking"}, [eff(9100, 0, 0, misc=7000, effect=360)], {9100: 0},
+               items=[(9101, 0, 8, 0, 20, [9100])], enchants=ench)
+    b = extract_buffs(t, set())[0][9100]
+    assert (b.cat, b.fx, b.enchant) == ("WEAPON", {"STR": 8}, 7000)

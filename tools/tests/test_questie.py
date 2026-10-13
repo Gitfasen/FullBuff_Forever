@@ -4,7 +4,8 @@ import cbor2
 import pytest
 
 from tools.model import Buff, Source
-from tools.sources.questie import QuestieData, area_to_uimap, attach_sources, load_area_map, load_questie
+from tools.sources.questie import (QuestieData, area_to_uimap, attach_sources, drop_unobtainable, load_area_map,
+                                   load_questie)
 
 
 def b64(obj) -> str:
@@ -156,3 +157,21 @@ def test_undecodable_value_raises_clear_error(tmp_path):
     toc = write_toc(tmp_path, ["## X-Npc-3-7: !!!!"])
     with pytest.raises(ValueError, match="X-Npc-3-7"):
         load_questie(toc)
+
+
+def _item_buff(bid, items, sources=()):
+    return Buff(id=bid, name=f"B{bid}", cat="TRINKET", fx={"AP": 1}, dur=20, lvl=0, excl=f"TRINKET:B{bid}",
+                items=list(items), burst=True, new=False, sources=list(sources))
+
+
+def test_drop_unobtainable_items_absent_from_questie():
+    q = QuestieData(items={100: {"name": "Known"}})
+    buffs = {1: _item_buff(1, [100, 999]),                       # one item known -> kept
+             2: _item_buff(2, [998]),                            # SoD leftover -> dropped
+             3: _item_buff(3, [997], [Source("craft", "Alchemy")]),   # crafted -> kept
+             4: _item_buff(4, [996], [Source("camping", "Fire")]),    # camping -> kept
+             5: _item_buff(5, [995]),                            # curated -> kept
+             6: _item_buff(6, [])}                               # class/world (no items) -> kept
+    dropped = drop_unobtainable(buffs, q, keep={5})
+    assert sorted(buffs) == [1, 3, 4, 5, 6]
+    assert [b.id for b in dropped] == [2]

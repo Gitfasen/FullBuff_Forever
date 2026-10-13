@@ -1,5 +1,13 @@
-"""Data records shared by the FullBuff build pipeline."""
+"""Data records and vocabularies shared by the FullBuff build pipeline."""
 from dataclasses import dataclass, field
+
+# The one definition of the stat keys, categories and the burst threshold.
+STAT_KEYS = ("STR", "AGI", "STA", "INT", "SPI", "AP", "RAP", "SPELL_DMG", "HEAL", "ARMOR", "HP",
+             "MANA", "MP5", "HP5", "CRIT", "SPELL_CRIT", "HIT", "SPELL_HIT", "STAT_PCT", "ARMOR_PCT",
+             "STR_PCT", "AGI_PCT", "STA_PCT", "INT_PCT", "SPI_PCT")
+CATEGORIES = ("CLASS", "WORLD", "CAMPING", "FLASK", "ELIXIR", "FOOD", "SCROLL", "WEAPON", "QUEST",
+              "TRINKET", "POTION")
+BURST_MAX = 600  # seconds; burst = 0 < dur < BURST_MAX
 
 
 @dataclass

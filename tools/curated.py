@@ -2,16 +2,11 @@
 import copy
 from dataclasses import fields
 
-from tools.model import Buff, Source
+from tools.model import BURST_MAX, CATEGORIES, STAT_KEYS, Buff, Source
 from tools.sources.questie import QuestieData, _locations
 
 CLASSES = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"]
-STAT_KEYS = {"STR", "AGI", "STA", "INT", "SPI", "AP", "RAP", "SPELL_DMG", "HEAL", "ARMOR", "HP",
-             "MANA", "MP5", "HP5", "CRIT", "SPELL_CRIT", "HIT", "SPELL_HIT", "STAT_PCT", "ARMOR_PCT"}
-CATEGORIES = {"CLASS", "WORLD", "CAMPING", "FLASK", "ELIXIR", "FOOD", "SCROLL", "WEAPON", "QUEST",
-              "TRINKET", "POTION"}
 BUFF_FIELDS = {f.name for f in fields(Buff)} - {"id"}
-BURST_MAX = 600
 
 
 def _bad_fx(fx) -> str | None:
@@ -136,7 +131,7 @@ def load_weights(cur: dict) -> dict[str, list[dict[str, float]]]:
         if not isinstance(specs, list) or len(specs) != 3:
             raise ValueError(f"weights[{cls}] must be a list of 3 spec maps")
         for spec in specs:
-            bad = set(spec) - STAT_KEYS
+            bad = set(spec) - set(STAT_KEYS)
             if bad:
                 raise ValueError(f"weights[{cls}] has unknown stat keys {sorted(bad)}")
         out[cls] = [{k: float(v) for k, v in s.items()} for s in specs]
