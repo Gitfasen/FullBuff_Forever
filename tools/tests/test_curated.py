@@ -107,8 +107,10 @@ def test_weights_reject_bad_shape():
 
 def test_curated_yaml_loads():
     cur = yaml.safe_load(CURATED.read_text(encoding="utf-8"))
-    assert {i["id"] for i in cur["include"]} >= {22888, 16609, 15366, 24425, 23735, 23769}
-    assert len(cur["excl_merge"]) == 9
+    # Forever's live world-buff ids (the vanilla ids are dummy auras in Forever DB2)
+    assert {i["id"] for i in cur["include"]} >= {1304452, 1304594, 1304690, 24425, 1304751, 1304759, 1304771}
+    assert not {i["id"] for i in cur["include"]} & {22888, 16609, 15366, 22817, 22818, 22820}
+    assert len(cur["excl_merge"]) == 12
 
 
 def test_include_synthesizes_buff_without_spell():

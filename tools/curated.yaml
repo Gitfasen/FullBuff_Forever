@@ -1,74 +1,80 @@
 # Curated overrides for the FullBuff build pipeline (see tools/curated.py).
+# Evidence for every id is in .superpowers/sdd/2026-10-13-fullbuff/task-6c-report.md.
 
-# World buffs not derivable from item data. Sources with npc/object resolve to coordinates.
+# Buffs not derivable from item data. Sources with npc/object resolve to coordinates.
+# An include whose spell cannot be extracted may carry name/fx/dur (+ lvl) to synthesize it.
 include:
-  - id: 22888  # Rallying Cry of the Dragonslayer
+  # --- World buffs: Forever's live copies (1304xxx); the vanilla ids are dummy auras here.
+  - id: 1304452  # Rallying Cry of the Dragonslayer (Onyxia / Nefarian head)
     cat: WORLD
     sources:
-      - {kind: npc, npc: 14392}
-      - {kind: npc, npc: 14721}
-  - id: 16609  # Warchief's Blessing
+      - {kind: npc, npc: 14392}  # Overlord Runthak, Orgrimmar
+      - {kind: npc, npc: 14720}  # High Overlord Saurfang, Orgrimmar
+      - {kind: npc, npc: 14394}  # Major Mattingly, Stormwind
+      - {kind: npc, npc: 14721}  # Field Marshal Stonebridge, Stormwind
+  - id: 1304594  # Warchief's Blessing (Rend head)
     cat: WORLD
     sources:
-      - {kind: npc, npc: 4949}
-  - id: 15366  # Songflower Serenade
+      - {kind: npc, npc: 4949}  # Thrall, Orgrimmar
+  - id: 1304678  # Might of Stormwind (Alliance counterpart of Warchief's Blessing)
     cat: WORLD
     sources:
-      - {kind: object, object: 164886}
-  - id: 24425  # Spirit of Zandalar
+      - {kind: npc, name: "Stormwind City", note: "Alliance counterpart of Warchief's Blessing; giver not in QuestieDB"}
+  - id: 1304690  # Songflower Serenade
     cat: WORLD
     sources:
-      - {kind: npc, npc: 14875}
-  - id: 22818  # Mol'dar's Moxie
+      - {kind: object, object: 164886}  # Corrupted Songflower, Felwood
+      - {kind: object, object: 171939}
+      - {kind: object, object: 171942}
+      - {kind: object, object: 174594}
+      - {kind: object, object: 174595}
+      - {kind: object, object: 174596}
+      - {kind: object, object: 174597}
+      - {kind: object, object: 174598}
+      - {kind: object, object: 174712}
+      - {kind: object, object: 174713}
+  - id: 24425  # Spirit of Zandalar (no Forever copy; this id has real effects)
     cat: WORLD
     sources:
-      - {kind: npc, npc: 11501}
-  - id: 22817  # Fengus' Ferocity
+      - {kind: npc, npc: 14875}  # Molthor, Yojamba Isle
+  - id: 1304751  # Slip'kik's Savvy (Dire Maul North tribute)
     cat: WORLD
     sources:
-      - {kind: npc, npc: 11501}
-  - id: 22820  # Slip'kik's Savvy
+      - {kind: npc, name: "King Gordok", note: "Dire Maul North tribute run"}
+  - id: 1304759  # Fengus' Ferocity (Dire Maul North tribute)
     cat: WORLD
     sources:
-      - {kind: npc, npc: 11501}
-  - id: 23735  # Sayge's Dark Fortune
+      - {kind: npc, name: "King Gordok", note: "Dire Maul North tribute run"}
+  - id: 1304771  # Sayge's Dark Fortune of Armor (the only fortune with a stat key)
     cat: WORLD
     sources:
-      - {kind: npc, npc: 14822}
-  - id: 23736  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
-  - id: 23737  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
-  - id: 23738  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
-  - id: 23766  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
-  - id: 23767  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
-  - id: 23768  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
-  - id: 23769  # Sayge's Dark Fortune
-    cat: WORLD
-    sources:
-      - {kind: npc, npc: 14822}
+      - {kind: npc, npc: 14822, note: "Darkmoon Faire"}  # Sayge
+  # --- Consumables of item subclass "Other", listed on wowclassicforever.info.
+  - {id: 10667, cat: ELIXIR}  # Rage of Ages - R.O.I.D.S. (8410)
+  - {id: 10668, cat: ELIXIR}  # Spirit of Boar - Lung Juice Cocktail (8411)
+  - {id: 10669, cat: ELIXIR}  # Strike of the Scorpok - Ground Scorpok Assay (8412)
+  - {id: 10692, cat: ELIXIR}  # Infallible Mind - Cerebral Cortex Compound (8423)
+  - {id: 10693, cat: ELIXIR}  # Spiritual Domination - Gizzard Gum (8424)
+  - {id: 24382, cat: ELIXIR}  # Spirit of Zanza (20079)
+  - {id: 30336, cat: ELIXIR}  # Permanent Spirit of Zanza (23795)
+  - {id: 4318, cat: ELIXIR}   # Guile of the Raptor - Call of the Raptor (4546)
+  - {id: 20875, cat: FOOD}    # Rumsey Rum (17048)
+  - {id: 22789, cat: FOOD}    # Gordok Green Grog (18269)
+  - {id: 22790, cat: FOOD}    # Kreeg's Stout Beatdown (18284)
+  - {id: 5257, cat: FOOD}     # Thunderbrew - Keg of Thunderbrew (1262)
+  - {id: 5020, cat: FOOD}     # Stormstout (4952)
+  - {id: 5021, cat: FOOD}     # Trogg Ale - Trogg Brew (4953)
 
-exclude: []
+exclude:
+  - 20906  # Trueshot Aura: passive group aura, excluded by the spec
+  - 1277328  # Dark Sacrifice: converts health to mana (channel), not a stat buff
 
-override: {}
+override:
+  25289: {burst: false}  # Battle Shout: 3 min party buff kept up continuously, not a cooldown
 
 # Buffs in one list share one exclusivity group (key = first name's current excl).
+# Resistance-only buffs (Shadow Protection, Prayer of Shadow Protection) and Blessing of
+# Salvation have no stat effect and are intentionally absent.
 excl_merge:
   - ["Power Word: Fortitude", "Prayer of Fortitude"]
   - ["Arcane Intellect", "Arcane Brilliance"]
@@ -76,9 +82,12 @@ excl_merge:
   - ["Blessing of Kings", "Greater Blessing of Kings"]
   - ["Blessing of Might", "Greater Blessing of Might"]
   - ["Blessing of Wisdom", "Greater Blessing of Wisdom"]
-  - ["Blessing of Salvation", "Greater Blessing of Salvation"]
   - ["Divine Spirit", "Prayer of Spirit"]
-  - ["Shadow Protection", "Prayer of Shadow Protection"]
+  - ["Ice Armor", "Frost Armor"]
+  - ["Demon Armor", "Demon Skin"]
+  - ["Warchief's Blessing", "Might of Stormwind"]
+  - ["Spirit of Zanza", "Permanent Spirit of Zanza"]
+  - ["Rumsey Rum Black Label", "Rumsey Rum", "Rumsey Rum Dark", "Gordok Green Grog"]
 
 # Per class: 3 spec maps in talent-tab order.
 weights:
