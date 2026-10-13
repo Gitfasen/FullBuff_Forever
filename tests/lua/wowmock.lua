@@ -1,0 +1,87 @@
+-- Minimal WoW API mock. Everything here is a plain global and can be
+-- replaced from Python (addon(mocks={...})) or from Lua before use.
+
+-- Lua helpers the game provides
+wipe = wipe or function(t) for k in pairs(t) do t[k] = nil end return t end
+tinsert = tinsert or table.insert
+tremove = tremove or table.remove
+
+-- Frames and events
+local frames = {}
+function CreateFrame(frameType, name, parent)
+  local f = { __type = frameType, __name = name, __events = {}, __scripts = {}, __shown = true }
+  function f:RegisterEvent(e) self.__events[e] = true end
+  function f:UnregisterEvent(e) self.__events[e] = nil end
+  function f:UnregisterAllEvents() self.__events = {} end
+  function f:IsEventRegistered(e) return self.__events[e] == true end
+  function f:SetScript(n, fn) self.__scripts[n] = fn end
+  function f:GetScript(n) return self.__scripts[n] end
+  function f:HookScript(n, fn) self.__scripts[n] = fn end
+  function f:Show() self.__shown = true end
+  function f:Hide() self.__shown = false end
+  function f:IsShown() return self.__shown end
+  function f:SetParent(p) end
+  frames[#frames + 1] = f
+  return f
+end
+
+-- Deliver a game event to every frame registered for it.
+function __fire_event(event, ...)
+  local snapshot = {}
+  for i, f in ipairs(frames) do snapshot[i] = f end
+  for _, f in ipairs(snapshot) do
+    if f.__events[event] and f.__scripts.OnEvent then
+      f.__scripts.OnEvent(f, event, ...)
+    end
+  end
+end
+
+-- Timers: queued until __flush_timers()
+local timers = {}
+C_Timer = {
+  After = function(seconds, fn) timers[#timers + 1] = { seconds = seconds, fn = fn } end,
+}
+function __flush_timers()
+  local guard = 0
+  while #timers > 0 do
+    guard = guard + 1
+    if guard > 1000 then error("__flush_timers: runaway timers") end
+    local batch = timers
+    timers = {}
+    table.sort(batch, function(a, b) return a.seconds < b.seconds end)
+    for _, t in ipairs(batch) do t.fn() end
+  end
+end
+function __pending_timers() return #timers end
+
+-- State queries
+InCombatLockdown = function() return false end
+issecretvalue = function(v) return false end
+GetTime = function() return 0 end
+
+-- Player
+UnitClass = function(unit) return "Warrior", "WARRIOR", 1 end
+UnitLevel = function(unit) return 60 end
+GetSpecialization = function() return 1 end
+GetSpecializationInfo = function(i) return 71, "Arms", "", "", "DAMAGER" end
+UnitStat = function(i) return 100, 100, 0, 0 end
+
+-- Auras and weapon enchants
+C_UnitAuras = {
+  GetAuraDataByIndex = function(unit, index, filter) return nil end,
+}
+GetWeaponEnchantInfo = function() return false, 0, 0, nil, false, 0, 0, nil end
+
+-- Stat getters
+UnitAttackPower = function() return 0, 0, 0 end
+UnitRangedAttackPower = function() return 0, 0, 0 end
+GetSpellBonusDamage = function(school) return 0 end
+GetSpellBonusHealing = function() return 0 end
+GetCritChance = function() return 0 end
+GetRangedCritChance = function() return 0 end
+GetSpellCritChance = function(school) return 0 end
+GetCombatRatingBonus = function(rating) return 0 end
+GetManaRegen = function() return 0, 0 end
+UnitArmor = function(unit) return 0, 0, 0, 0, 0 end
+UnitHealthMax = function(unit) return 1000 end
+UnitPowerMax = function(unit, power) return 1000 end

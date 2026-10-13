@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: FullBuff
+## Notes: Shows your maximum stats with every obtainable buff and where to get missing ones.
+## Version: 0.1.0
+## SavedVariables: FullBuffDB
+## SavedVariablesPerCharacter: FullBuffCharDB
+## IconTexture: Interface\Icons\Spell_Holy_WordFortitude
+## AddonCompartmentFunc: FullBuff_OnCompartmentClick
+
+Core\Init.lua
+Core\Locale.lua
+Locales\enUS.lua
+Locales\ukUA.lua
+Core\Compat.lua
+Core\Events.lua
+Core\SavedVars.lua
+Data\Buffs.lua
+Data\Sources.lua
+Data\Weights.lua
