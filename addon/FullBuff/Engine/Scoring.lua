@@ -14,6 +14,8 @@ local CANONICAL = {
   "STR", "AGI", "STA", "INT", "SPI", "AP", "RAP", "SPELL_DMG", "HEAL", "ARMOR", "HP",
   "MANA", "MP5", "HP5", "CRIT", "SPELL_CRIT", "HIT", "SPELL_HIT",
 }
+Scoring.PRIMARIES = PRIMARIES
+Scoring.CANONICAL = CANONICAL
 local IS_PRIMARY = {}
 for _, k in ipairs(PRIMARIES) do IS_PRIMARY[k] = true end
 

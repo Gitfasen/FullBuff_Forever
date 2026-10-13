@@ -34,7 +34,7 @@ end
 """
 
 
-def compute(addon, state, entries, mark=True, db=None):
+def compute(addon, state, entries, db=None):
     """entries: Lua list body of E(...) calls. Groups them by cat into a catalog."""
     a = addon()
     a.run(WEIGHTS)
@@ -50,8 +50,7 @@ for _, e in ipairs(list) do
 end
 __ns.__cat = cat
 """ % entries)
-    if mark:
-        a.run("ns.Scoring:MarkRecommended(__ns.__cat, __ns.__st)")
+    # Compute runs Scoring:MarkRecommended itself (R3).
     a.run("__ns.__res = ns.MaxCalc:Compute(__ns.__st, __ns.__cat)")
     res = a.eval("__ns.__res")
     rows = {}
@@ -170,11 +169,14 @@ def test_camp_buff_and_class_buff_share_group(addon):
 
 
 def test_active_percent_swapped_for_better_in_group(addon):
-    # Lesser {STAT_PCT=5} ACTIVE: STR 105, AGI 52.5, STA 84, AP 210 (200 + 5*2).
+    # Lesser {STAT_PCT=5} ACTIVE: STR 105, AGI 52.5, STA 84, and derived from those +5%:
+    # AP 200 + 5*2 = 210, HP 800 + 4*10 = 840, CRIT 5 + 2.5*0.04 = 5.1, ARMOR 1000 + 2.5*2 = 1005.
     # Greater {STAT_PCT=10} CAN_ADD same group is recommended.
     # base STR = 105/1.05 = 100 -> max 110 (+5) -> AP 210 + 10 = 220
-    # base AGI = 52.5/1.05 = 50 -> max 55 (+2.5); STA 84 -> 88 (+4) -> HP 800 + 40 = 840
-    st = make_state({"STR": 105, "AGI": 52.5, "STA": 84, "AP": 210}, active=[40])
+    # base AGI = 52.5/1.05 = 50 -> max 55 (+2.5) -> CRIT 5.1 + 0.1 = 5.2, ARMOR 1005 + 5 = 1010
+    # STA 84 -> 88 (+4) -> HP 840 + 40 = 880
+    st = make_state({"STR": 105, "AGI": 52.5, "STA": 84, "AP": 210, "HP": 840, "CRIT": 5.1,
+                     "ARMOR": 1005}, active=[40])
     _, _, rows, _, missing = compute(addon, st, """
       E(40, "SCROLL", "Lesser", "pct", {STAT_PCT=5}, "ACTIVE"),
       E(41, "CLASS", "Greater", "pct", {STAT_PCT=10}),
@@ -182,8 +184,10 @@ def test_active_percent_swapped_for_better_in_group(addon):
     assert rows["STR"] == (105, 110, 5)
     assert rows["AP"] == (210, 220, 10)
     assert rows["STA"] == (84, 88, 4)
-    assert rows["HP"] == (800, 840, 40)
+    assert rows["HP"] == (840, 880, 40)
     assert rows["AGI"][1] == 55
+    assert rows["CRIT"] == (5.1, 5.2, pytest.approx(0.1))
+    assert rows["ARMOR"] == (1005, 1010, 5)
     assert missing == [41]
 
 
@@ -201,18 +205,32 @@ def test_armor_pct_and_derived_armor(addon):
 
 
 def test_burst_ignored(addon):
-    # Burst potion {AP=500}: never chosen, even if wrongly flagged recommended.
+    # Burst potion {AP=500} CAN_ADD: never chosen -> max AP stays 200.
     _, res, rows, _, missing = compute(addon, make_state(), """
       E(60, "POTION", "Rage Potion", "potion", {AP=500}, "CAN_ADD", true),
     """)
     assert rows["AP"] == (200, 200, 0) and missing == []
-    a, res, rows, _, missing = compute(addon, make_state(), """
-      (function() local e = E(60, "POTION", "Rage Potion", "potion", {AP=500}, "CAN_ADD", true)
-        e.recommended = true; return e end)(),
-      (function() local e = E(61, "FOOD", "Unavail", "food", {AP=50}, "UNAVAILABLE")
-        e.recommended = true; return e end)(),
-    """, mark=False)
-    assert rows["AP"] == (200, 200, 0) and missing == []
+
+
+def test_active_burst_stays_in_baseline(addon):
+    # Burst potion {AP=500} ACTIVE: AP 700 = 200 + 500. Not subtracted, not re-added:
+    # max AP = 700 - 0 + 0 = 700, diff 0 (never negative).
+    _, _, rows, _, missing = compute(addon, make_state({"AP": 700}, active=[60]), """
+      E(60, "POTION", "Rage Potion", "potion", {AP=500}, "ACTIVE", true),
+    """)
+    assert rows["AP"] == (700, 700, 0) and missing == []
+
+
+def test_active_zero_score_buff_not_subtracted(addon):
+    # Arcane Intellect {INT=31} ACTIVE on a Warrior: score 0 (no INT/MANA weight), so its group has
+    # no chosen entry. It stays in the baseline: INT 51 -> 51, MANA 1000 -> 1000.
+    st = make_state({"INT": 51, "MANA": 1000}, active=[70])
+    _, _, rows, _, missing = compute(addon, st, """
+      E(70, "CLASS", "Arcane Intellect", "int", {INT=31}, "ACTIVE"),
+    """, db="{showAllStats=true}")
+    assert rows["INT"] == (51, 51, 0)
+    assert rows["MANA"] == (1000, 1000, 0)
+    assert missing == []
 
 
 def test_unknown_aura_not_subtracted(addon):
@@ -238,19 +256,20 @@ def test_derived_ap_from_str_delta(addon):
 
 
 def test_rounding_output_only(addon):
-    # STR 101, AGI 51 with Kings: STR 111.1 -> 111 (+10); AP 200 + 10.1*2 = 220.2 -> 220 (+20)
+    # STR 104, AGI 51 with Kings: STR 114.4 -> 114 (+10);
+    # AP 200 + 10.4*2 = 220.8 -> 221 (+21). Rounding STR first would give 200 + 10*2 = 220.
     # AGI 56.1 -> 56; CRIT 5 + 5.1*0.04 = 5.204 -> 5.2
-    _, _, rows, _, _ = compute(addon, make_state({"STR": 101, "AGI": 51}), """
+    _, _, rows, _, _ = compute(addon, make_state({"STR": 104, "AGI": 51}), """
       E(20, "CLASS", "Kings", "kings", {STAT_PCT=10}),
     """)
-    assert rows["STR"] == (101, 111, 10)
-    assert rows["AP"] == (200, 220, 20)
+    assert rows["STR"] == (104, 114, 10)
+    assert rows["AP"] == (200, 221, 21)
     assert rows["AGI"] == (51, 56, 5)
     assert rows["CRIT"] == (5.0, 5.2, pytest.approx(0.2))
 
 
 def test_stale_passthrough_and_all_stats(addon):
-    _, res, rows, order, _ = compute(addon, make_state(stale=True), "", db="{allStats=true}")
+    _, res, rows, order, _ = compute(addon, make_state(stale=True), "", db="{showAllStats=true}")
     assert res["stale"] is True
     assert order == ["STR", "AGI", "STA", "INT", "SPI", "AP", "ARMOR", "HP", "CRIT"]
     assert rows["INT"] == (20, 20, 0)

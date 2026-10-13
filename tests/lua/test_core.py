@@ -101,6 +101,7 @@ def test_savedvars_defaults_applied(addon):
     a.load_addon()
     assert a.eval("ns.DB.lang") == "en"
     assert a.eval("ns.DB.scale") == 1
+    assert a.eval("ns.DB.showAllStats") is False and a.eval("ns.DB.allStats") is None
     assert a.eval("type(ns.CharDB.pins)") == "table"
     assert a.eval("ns.DB == FullBuffDB and ns.CharDB == FullBuffCharDB")
 
