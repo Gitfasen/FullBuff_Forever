@@ -217,6 +217,14 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
         return _spell_fx([r for r in rows if _i(r, "Effect") == 6
                           and _i(r, "ImplicitTarget_0") == TARGET_CASTER])
 
+    def self_only(sid: int) -> bool:
+        """Castable only on the caster: a weapon imbue, or every aura effect targets the caster."""
+        if enchant_info(sid)[0] is not None:
+            return True
+        rows = [r for r in effects.get(sid, []) if _i(r, "Effect") in APPLY_EFFECTS]
+        return bool(rows) and all(_i(r, "Effect") == 6 and _i(r, "ImplicitTarget_0") == TARGET_CASTER
+                                  for r in rows)
+
     # on-use (TriggerType 0) item spells -> items
     use_items: dict[int, list[int]] = defaultdict(list)
     for r in t.get("ItemXItemEffect", []):
@@ -279,7 +287,7 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
             name, dur = names.get(sid, ""), dur_of(sid)
             out.append(Buff(id=tier, name=name, cat="FOOD", fx=fx, dur=dur, lvl=lvl_of(ids),
                             excl=f"FOOD:{name}", items=ids, burst=0 < dur < BURST_MAX,
-                            new=tier not in era_spell_ids))
+                            new=tier not in era_spell_ids, aura=sid))
         return out
 
     buffs: dict[int, Buff] = {}
@@ -316,7 +324,7 @@ def extract_buffs(t: dict[str, list[dict]], era_spell_ids: set[int]) -> tuple[di
         top = sids[-1]
         ranks = [Rank(s, levels.get(s, 0), class_fx(s)) for s in sids]
         buffs[top] = make(top, "CLASS", class_fx(top), ranks[0].lvl, [], cls=cls, ranks=ranks,
-                          enchant=enchant_info(top)[0])
+                          enchant=enchant_info(top)[0], self_only=self_only(top))
 
     # long buffs with no item and no class: world candidates for curated overrides
     for sid in effects:

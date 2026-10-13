@@ -330,3 +330,40 @@ def test_item_imbue_effect_360_is_weapon():
                items=[(9101, 0, 8, 0, 20, [9100])], enchants=ench)
     b = extract_buffs(t, set())[0][9100]
     assert (b.cat, b.fx, b.enchant) == ("WEAPON", {"STR": 8}, 7000)
+
+
+def test_food_tiers_carry_the_template_aura():
+    buffs, _ = extract_buffs(_food_tiers(), set())
+    assert buffs[1248401].aura == 1248422 and buffs[1248380].aura == 1248422
+
+
+def test_plain_buffs_have_no_aura_and_are_not_self_only():
+    t = tables({17538: "Elixir of the Mongoose"}, [eff(17538, 29, 25, misc=1)], {17538: 3600},
+               items=[(13452, 0, 2, 0, 46, [17538])])
+    b = extract_buffs(t, set())[0][17538]
+    assert b.aura is None and b.self_only is False
+
+
+def test_self_only_class_buffs():
+    # caster-only effects (Inner Fire, armors, aspects) -> self_only; castable on others -> not
+    t = tables({10952: "Inner Fire", 10938: "Power Word: Fortitude", 25289: "Battle Shout",
+                25296: "Aspect of the Hawk"},
+               [eff(10952, 22, 1395, misc=1) | {"ImplicitTarget_0": "1"},
+                eff(10938, 29, 70, misc=2) | {"ImplicitTarget_0": "21"},
+                eff(25289, 99, 139) | {"ImplicitTarget_0": "20"},
+                eff(25296, 124, 120) | {"ImplicitTarget_0": "1"}],
+               {10952: 600, 10938: 3600, 25289: 180, 25296: -1},
+               class_sets={10952: 6, 10938: 6, 25289: 4, 25296: 9})
+    buffs, _ = extract_buffs(t, set())
+    assert {sid: b.self_only for sid, b in buffs.items()} == \
+        {10952: True, 10938: False, 25289: False, 25296: True}
+
+
+def test_class_imbue_is_self_only():
+    ench = [{"ID": "1664", "Duration": "3600", "Effect_0": "3", "EffectArg_0": "16313", "EffectPointsMin_0": "0",
+             "Effect_1": "0", "EffectArg_1": "0", "EffectPointsMin_1": "0",
+             "Effect_2": "0", "EffectArg_2": "0", "EffectPointsMin_2": "0"}]
+    t = tables({16316: "Rockbiter Weapon", 16313: "Rockbiter 7"},
+               [eff(16316, 0, 1800, misc=1664, effect=360), eff(16313, 99, 72)],
+               {16316: 0, 16313: 0}, levels={16316: 54}, enchants=ench, class_masks={16316: 64})
+    assert extract_buffs(t, set())[0][16316].self_only is True

@@ -63,6 +63,10 @@ def _buff(b: Buff) -> str:
         parts.append("ranks={" + ", ".join(_rank(r) for r in b.ranks) + "}")
     if b.enchant is not None:
         parts.append(f"enchant={b.enchant}")
+    if b.self_only:
+        parts.append("selfOnly=true")
+    if b.aura is not None and b.aura != b.id:
+        parts.append(f"aura={b.aura}")
     return "{" + ", ".join(parts) + "}"
 
 

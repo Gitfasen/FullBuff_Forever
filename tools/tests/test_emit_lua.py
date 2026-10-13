@@ -103,3 +103,21 @@ def test_report_lists_unobtainable(tmp_path):
     text = (tmp_path / "r.md").read_text(encoding="utf-8")
     assert "## Excluded as unobtainable (1)" in text
     assert "- 461224 Demon-Tainted Blood [TRINKET] items 228078" in text
+
+
+def test_self_only_and_aura_emitted_only_when_set(tmp_path):
+    hawk = Buff(id=25296, name="Aspect of the Hawk", cat="CLASS", fx={"RAP": 120}, dur=0, lvl=10,
+                excl="CLASS:Aspect of the Hawk", items=[], burst=False, new=False, cls="HUNTER",
+                self_only=True)
+    tier = Buff(id=1248401, name="Well Fed", cat="FOOD", fx={"STR": 20}, dur=900, lvl=45,
+                excl="FOOD:Well Fed", items=[20452], burst=False, new=True, aura=1248422)
+    same = Buff(id=7, name="Same", cat="FOOD", fx={"STA": 1}, dur=900, lvl=1, excl="FOOD:Same",
+                items=[], burst=False, new=False, aura=7)
+    emit_buffs({25296: hawk, 1248401: tier, 17538: mongoose(), 7: same}, tmp_path / "Buffs.lua")
+    text = (tmp_path / "Buffs.lua").read_text(encoding="utf-8")
+    ns = run(tmp_path / "Buffs.lua")
+    assert ns.Buffs[25296].selfOnly is True and ns.Buffs[25296].aura is None
+    assert ns.Buffs[1248401].aura == 1248422 and ns.Buffs[1248401].selfOnly is None
+    assert ns.Buffs[17538].selfOnly is None and ns.Buffs[17538].aura is None
+    assert ns.Buffs[7].aura is None
+    assert "selfOnly=false" not in text and text.count("aura=") == 1

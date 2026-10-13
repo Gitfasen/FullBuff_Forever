@@ -43,3 +43,5 @@ class Buff:
     ranks: list[Rank] | None = None
     enchant: int | None = None
     sources: list[Source] = field(default_factory=list)
+    self_only: bool = False      # class buff castable only on the caster (own class only)
+    aura: int | None = None      # aura id the player receives, when it differs from `id`
