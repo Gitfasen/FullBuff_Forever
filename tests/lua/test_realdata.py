@@ -66,10 +66,10 @@ def test_real_data_mage_maximum_is_sane(addon):
     # (Forever value) + Rallying Cry 80 + Supreme Power 150 + one SPELL_DMG elixir 40
     # + one food 28 + one weapon enchant 45 = 573; anything above 600 means stacking.
     assert rows["SPELL_DMG"][1] <= 600, rows["SPELL_DMG"]
-    assert res["missingCount"] <= 30, res["missingCount"]
+    assert len(chosen) <= 30, len(chosen)
 
 
 def test_real_data_rogue_maximum_is_sane(addon):
     res, rows, chosen = probe(addon, "ROGUE", 2, ROGUE)
     _assert_one_per_exclusive_family(chosen)
-    assert res["missingCount"] <= 30, res["missingCount"]
+    assert len(chosen) <= 30, len(chosen)

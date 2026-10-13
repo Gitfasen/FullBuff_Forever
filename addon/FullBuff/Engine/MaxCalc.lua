@@ -50,16 +50,9 @@ local function safeDiv(v, m)
   return v
 end
 
-local function categoryIndex()
-  local idx = {}
-  local cats = ns.Catalog and ns.Catalog.CATEGORIES or {}
-  for i, c in ipairs(cats) do idx[c] = i end
-  return idx
-end
-
 -- Compute(state, catalog) runs Scoring:MarkRecommended(catalog, state) (mutates
 -- entry.recommended) and returns { rows = { {stat, current, max, diff} },
---   missing = Entry[], missingCount, percentOfMax, stale }
+--   percentOfMax, stale }
 -- With `picks` ({[slot]=buffId|false}) the chosen entries are those whose buff id is
 -- picked (ACTIVE or CAN_ADD, not burst), grouped by the entry's current excl (the
 -- slot key is ignored, so a rebuild that moved a buff still works). If two picked
@@ -184,23 +177,8 @@ function MaxCalc:Compute(state, catalog, picks)
     rows[#rows + 1] = { stat = k, current = rc, max = rm, diff = round(rm - rc, k) }
   end
 
-  local missing = {}
-  for _, e in ipairs(chosen) do
-    if e.status == "CAN_ADD" then missing[#missing + 1] = e end
-  end
-  local cidx = categoryIndex()
-  table.sort(missing, function(a, b)
-    local ca, cb = cidx[a.cat] or 999, cidx[b.cat] or 999
-    if ca ~= cb then return ca < cb end
-    local na, nb = a.name or "", b.name or ""
-    if na ~= nb then return na < nb end
-    return (a.id or 0) < (b.id or 0)
-  end)
-
   return {
     rows = rows,
-    missing = missing,
-    missingCount = #missing,
     percentOfMax = n > 0 and (sum / n * 100) or 100,
     stale = state and state.stale or false,
   }

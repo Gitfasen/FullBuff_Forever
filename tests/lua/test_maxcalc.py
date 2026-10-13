@@ -58,7 +58,12 @@ __ns.__cat = cat
     for r in res["rows"].values():
         rows[r["stat"]] = (r["current"], r["max"], r["diff"])
         order.append(r["stat"])
-    missing = [m["id"] for m in res["missing"].values()]
+    # chosen-but-not-active entries (MaxCalc marks entry.recommended), sorted by id
+    missing = sorted(a.eval("""(function() local out = {}
+      for k, list in pairs(__ns.__cat) do if k ~= 'order' then for _, e in ipairs(list) do
+        if e.recommended and not e.burst and e.status == 'CAN_ADD' then out[#out + 1] = e.id end
+      end end end
+      return out end)()""").values())
     return a, res, rows, order, missing
 
 
@@ -71,7 +76,7 @@ def test_no_active_buffs_max_equals_current_plus_best(addon):
     # food group: A {STR=10} (score 20) beats B {STR=5}; elixir C {AGI=20}.
     # STR 100 -> 110 (+10); AGI 50 -> 70 (+20)
     # AP 200 + 10*2 = 220; CRIT 5 + 20*0.04 = 5.8; ARMOR 1000 + 20*2 = 1040
-    # STA/HP unchanged. missing sorted by category order: ELIXIR (C) before FOOD (A)
+    # STA/HP unchanged. missing: A and C
     _, res, rows, order, missing = compute(addon, make_state(), """
       E(1, "FOOD", "Food A", "food", {STR=10}),
       E(2, "FOOD", "Food B", "food", {STR=5}),
@@ -85,7 +90,7 @@ def test_no_active_buffs_max_equals_current_plus_best(addon):
     assert rows["ARMOR"] == (1000, 1040, 40)
     assert rows["HP"] == (800, 800, 0)
     assert rows["CRIT"] == (5.0, 5.8, pytest.approx(0.8))
-    assert missing == [3, 1] and res["missingCount"] == 2
+    assert missing == [1, 3]
     # mean(100/110, 50/70, 1, 200/220, 1000/1040, 1, 5/5.8) * 100
     assert res["percentOfMax"] == pytest.approx(
         pct((100, 110), (50, 70), (80, 80), (200, 220), (1000, 1040), (800, 800), (5, 5.8)))
@@ -101,7 +106,7 @@ def test_active_flat_subtracted_not_double_counted(addon):
     """)
     assert rows["STR"] == (110, 110, 0)
     assert rows["AP"] == (220, 220, 0)
-    assert missing == [] and res["missingCount"] == 0
+    assert missing == []
     assert res["percentOfMax"] == pytest.approx(100)
 
 
@@ -122,7 +127,7 @@ def test_kings_percent_applied_to_primary(addon):
     assert rows["CRIT"] == (5.0, 5.2, pytest.approx(0.2))
     assert rows["ARMOR"] == (1000, 1010, 10)
     assert rows["HP"] == (800, 880, 80)
-    assert missing == [20, 1]
+    assert missing == [1, 20]
     # Kings ACTIVE: stats STR 110, AGI 55, STA 88 (and derived AP 220, CRIT 5.2, ARMOR 1010, HP 880)
     # base STR = 110/1.1 - 0 = 100 -> max (100+10)*1.1 = 121 (+11) -> AP 220 + 22 = 242
     st = make_state({"STR": 110, "AGI": 55, "STA": 88, "AP": 220, "CRIT": 5.2, "ARMOR": 1010,
@@ -154,7 +159,7 @@ def test_same_group_counts_once(addon):
       E(2, "FOOD", "Food B", "food", {AP=30}),
     """)
     assert rows["AP"] == (200, 240, 40)
-    assert missing == [1] and res["missingCount"] == 1
+    assert missing == [1]
 
 
 def test_camp_buff_and_class_buff_share_group(addon):
@@ -201,7 +206,7 @@ def test_armor_pct_and_derived_armor(addon):
       E(52, "ELIXIR", "Agility", "agi", {AGI=10}),
     """)
     assert rows["ARMOR"] == (1100, 1232, 132)
-    assert missing == [52, 51]
+    assert missing == [51, 52]
 
 
 def test_burst_ignored(addon):
@@ -283,7 +288,8 @@ def test_percent_skips_zero_max_and_empty_is_100(addon):
     res = a.eval("ns.MaxCalc:Compute(__ns.__st, {order={}})")
     r = res["rows"][1]
     assert (r["stat"], r["current"], r["max"], r["diff"]) == ("HIT", 0, 0, 0)
-    assert res["percentOfMax"] == 100 and res["missingCount"] == 0
+    assert res["percentOfMax"] == 100
+    assert res["missing"] is None and res["missingCount"] is None  # removed outputs
 
 
 def test_active_lower_rank_subtracts_its_own_fx_and_counts_as_missing(addon):
@@ -358,7 +364,6 @@ def test_pick_not_used_keeps_active_buff(addon):
       E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),
       E(2, "FOOD", "B", "food", {STR=5}),""", "{food=false}")
     assert rows["STR"] == (100, 100)
-    assert res["missingCount"] == 0
 
 
 def test_unavailable_pick_ignored(addon):
@@ -378,7 +383,6 @@ def test_empty_picks_max_equals_current(addon):
       E(1, "FOOD", "A", "food", {STR=10}),
       E(2, "ELIXIR", "C", "elixir", {AGI=20}),""", "{}")
     assert all(c == m for c, m in rows.values())
-    assert res["missingCount"] == 0
 
 
 def test_pick_matched_by_id_not_slot_key(addon):
@@ -398,7 +402,6 @@ def test_picked_active_entry_max_equals_current(addon):
     rows, res = compute_picks(addon, """
       E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),""", "{food=1}")
     assert rows["STR"] == (100, 100)
-    assert res["missingCount"] == 0
 
 
 def test_picked_upgrade_replaces_active_lower_rank(addon):
