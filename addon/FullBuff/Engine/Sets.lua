@@ -65,8 +65,8 @@ function Sets:SetActive(id)
 end
 
 -- Default picks (Create, auto sets): per slot with a recommendation, the best-scoring
--- available (ACTIVE/CAN_ADD, non-burst) CLASS buff when there is one (buffs from
--- players come first; ties: lower id), else the recommended entry.
+-- available (ACTIVE/CAN_ADD, non-burst) CLASS buff scoring > 0 when there is one
+-- (buffs from players come first; ties: lower id), else the recommended entry.
 local function recommendedPicks()
   local picks = {}
   local ok, state = pcall(function() return ns.PlayerState:Get() end)
@@ -82,7 +82,7 @@ local function recommendedPicks()
       if cat == "CLASS" and e.excl and not e.burst and (e.status == "ACTIVE" or e.status == "CAN_ADD") then
         local sc = ns.Scoring:Score(e.fx or {}, state)
         local b = classBest[e.excl]
-        if not b or sc > b.score or (sc == b.score and e.id < b.id) then
+        if sc > 0 and (not b or sc > b.score or (sc == b.score and e.id < b.id)) then
           classBest[e.excl] = { id = e.id, score = sc }
         end
       end
@@ -297,7 +297,9 @@ local function sync()
 end
 
 -- After PLAYER_ENTERING_WORLD run one catch-up even if no new FULLBUFF_STATE fires
--- (the snapshot may not change after the world loads).
+-- (the snapshot may not change after the world loads). Usually redundant: PlayerState
+-- also refreshes on PEW and its FULLBUFF_STATE runs sync first; a second sync is a
+-- no-op then (lastSpec already seen, RefreshAuto fires only on changed picks).
 ns.Events:On("PLAYER_ENTERING_WORLD", function()
   worldReady = true
   ns.Events:Debounce("setsWorld", 0.5, sync)

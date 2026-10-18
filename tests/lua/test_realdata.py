@@ -113,3 +113,18 @@ def test_real_camp_boosted_stats_level_20_band_and_motw_outscores(addon):
     # a druid up to level 30 may buff a level-20 warrior: Mark of the Wild rank 30
     assert motw["score"] > camp["score"]
     assert motw["rec"] is True and camp["rec"] is None
+
+
+def test_real_priest_buffed_above_own_rank_max_not_below_current(addon):
+    # level-30 priest with Fortitude 2791 (lvl 36) from a higher priest
+    a = addon()
+    a.run("ns.DB = ns.DB or {}; ns.DB.showAllStats = true")
+    a.run("__ns.__st = {class='PRIEST', spec=1, level=30, stale=false, stats=%s,"
+          " ratios={hpPerSta=10, manaPerInt=15, apPerStr=1, apPerAgi=0, rapPerAgi=0},"
+          " active={[10938]=true}, activeAura={[10938]=2791}, unknownAuras={}}"
+          % _tbl(dict(STR=30, AGI=30, STA=80, INT=120, SPI=110, ARMOR=300, HP=900, MANA=1800)))
+    a.run("__ns.__cat = ns.Catalog:Build(__ns.__st)")
+    for picks in ("nil", "{STA=10938}"):
+        res = a.eval("ns.MaxCalc:Compute(__ns.__st, __ns.__cat, %s)" % picks)
+        for r in res["rows"].values():
+            assert r["max"] >= r["current"], (picks, r["stat"], r["current"], r["max"])

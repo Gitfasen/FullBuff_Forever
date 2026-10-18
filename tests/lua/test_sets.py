@@ -282,3 +282,19 @@ def test_entering_world_catches_up_without_state_event(addon):
     a.advance(5)
     assert a.eval("n") == 0
     assert a.errors() == []
+
+
+def test_default_picks_class_preference_needs_positive_score(addon):
+    a = addon()
+    a.run(SETUP)
+    a.run(CLASSPREF)
+    # STA class buff scores 0 -> keep the recommendation (Scroll 1000);
+    # INT best class buff is ACTIVE with an upgrade -> still picked
+    a.run("""local build = ns.Catalog.Build
+      ns.Catalog.Build = function(...) local c = build(...)
+        c.CLASS[1].fx = {s=0}
+        c.CLASS[4].status = 'ACTIVE'; c.CLASS[4].upgrade = true; c.CLASS[4].activeFx = {s=2}
+        return c end""")
+    a.run("ns.Events:Fire('FULLBUFF_LOADED')")
+    picks = dict(a.eval("ns.Sets:Get(1).picks"))
+    assert picks["STA"] == 1000 and picks["INT"] == 23028

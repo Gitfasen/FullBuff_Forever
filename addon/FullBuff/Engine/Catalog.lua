@@ -17,7 +17,7 @@ for _, c in ipairs(Catalog.CATEGORIES) do KNOWN[c] = true end
 local function rankLvl(r) return r.lvl or 0 end
 
 local function rankSlack(buff, state)
-  if buff.cat == "CAMPING" or buff.cls == state.class then return 0 end
+  if buff.cat == "CAMPING" or (buff.cls and buff.cls == state.class) then return 0 end
   return RANK_LEVEL_SLACK
 end
 
@@ -61,6 +61,13 @@ local function activeRank(buff, auraSpell, level)
   return buff.fx, nil
 end
 
+-- Scoring is loaded after Catalog (TOC order): resolved at call time.
+local function score(fx, state)
+  local S = ns.Scoring
+  if not S or not S.Score then return 0 end
+  return S:Score(fx or {}, state)
+end
+
 local function byNameThenId(a, b)
   if a.name ~= b.name then return a.name < b.name end
   return a.id < b.id
@@ -75,12 +82,23 @@ function Catalog:Build(state)
       local best, rankSpell, fx, allowed = pickRank(id, buff, level, rankSlack(buff, state))
       local status, activeFx, upgrade
       if state.active and state.active[id] then
-        -- any rank up counts as active; a higher allowed rank is an upgrade
+        -- any rank up counts as active; a higher allowed rank that scores better is an
+        -- upgrade; an active rank at least as good as the best allowed one becomes fx
         status = "ACTIVE"
         local auraSpell = state.activeAura and state.activeAura[id]
         local rank
         activeFx, rank = activeRank(buff, auraSpell, level)
-        if rank and best and allowed and rankLvl(best) > rankLvl(rank) then upgrade = true end
+        if rank and best then
+          local activeScore, bestScore = score(activeFx, state), score(fx, state)
+          if rankLvl(rank) >= rankLvl(best) or activeScore > bestScore
+            or (activeScore == bestScore and activeScore > 0) then
+            -- the rank up (e.g. from a higher caster) is at least as good: it is the entry
+            -- (a zero score, a stat this spec ignores, falls back to rank levels)
+            rankSpell, fx = rank.spell or id, activeFx
+          elseif allowed then
+            upgrade = true
+          end
+        end
       elseif allowed then
         status = "CAN_ADD"
       else

@@ -111,6 +111,20 @@ function MaxCalc:Compute(state, catalog, picks)
     chosen[#chosen + 1] = b.e
     chosenGroup[g] = true
   end
+  -- Safety net: a group's chosen fx never scores below what is already up in it (an
+  -- active rank above the chosen one would otherwise push max below current).
+  for i, c in ipairs(chosen) do
+    local g = groupKey(c)
+    local cs, better = ns.Scoring:Score(c.fx or {}, state), nil
+    for _, e in ipairs(all) do
+      if not e.burst and groupKey(e) == g and (e.status == "ACTIVE" or e.activeFx ~= nil) then
+        local afx = e.activeFx or e.fx or {}
+        local s = ns.Scoring:Score(afx, state)
+        if s > cs then better, cs = afx, s end
+      end
+    end
+    if better then chosen[i] = { id = c.id, excl = c.excl, fx = better } end
+  end
   -- An active lower rank (status ACTIVE with upgrade, activeFx set) counts with its
   -- activeFx; the chosen entry's fx is the best rank.
   -- Only active non-burst buffs whose group has a chosen entry are removed from

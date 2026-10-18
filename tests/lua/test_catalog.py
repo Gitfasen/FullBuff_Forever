@@ -224,3 +224,12 @@ def test_camp_active_same_spell_resolves_by_level(addon):
     e = entry(a, "CAMPING", 900)
     assert e["status"] == "ACTIVE" and e["upgrade"] is None
     assert e["activeFx"]["ARMOR"] == 114 and e["fx"]["ARMOR"] == 114
+
+
+def test_own_class_active_rank_above_level_is_the_entry_fx(addon):
+    # level-30 priest buffed by a higher priest with rank 2791 (lvl 36): the best castable
+    # rank is 1245 (STA 26) but 2791 (STA 42) is up -> fx/rankSpell are the active rank
+    a = build(addon, "{class='PRIEST', level=30, active={[10938]=true}, activeAura={[10938]=2791}}", FORT_A)
+    e = entry(a, "CLASS", 10938)
+    assert e["status"] == "ACTIVE" and e["upgrade"] is None
+    assert e["rankSpell"] == 2791 and e["fx"]["STA"] == 42 and e["activeFx"]["STA"] == 42

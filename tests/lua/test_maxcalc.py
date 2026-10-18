@@ -460,3 +460,16 @@ def test_unavailable_pick_with_active_member_keeps_it(addon):
       E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
       E(2, "CLASS", "B", "food", {STR=15}, "UNAVAILABLE"),""", "{food=2}")
     assert rows["STR"] == (100, 100)
+
+
+def test_active_fx_better_than_chosen_fx_max_not_below_current(addon):
+    # safety net: an active rank above the chosen fx (STA 42 up, entry fx STA 26) must not
+    # push max below current: the group's chosen fx is the better of the two
+    _, res, rows, _, _ = compute(addon, make_state(), """
+      (function() local e = E(7, "CLASS", "Fortitude", "fort", {STA=26}, "ACTIVE")
+        e.activeFx = {STA=42}; return e end)(),
+    """)
+    assert rows["STA"][:2] == (80, 80) and rows["HP"][:2] == (800, 800)
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="CLASS", name="F", excl="fort", fx={STR=4}, activeFx={STR=10}, status="ACTIVE"},""", "{fort=1}")
+    assert rows["STR"] == (100, 100)
