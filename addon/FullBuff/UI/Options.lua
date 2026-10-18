@@ -153,7 +153,7 @@ local function buffName(id)
 end
 
 -- SlotModel(setId) -> { {slot, name, picked, options = {{buffId, name, valueText,
--- recommended, active, unavailable}}} }. Slots follow their `order`; slots with no
+-- icon, recommended, active, unavailable}}} }. Slots follow their `order`; slots with no
 -- obtainable option are hidden unless the set picks a buff there (that pick stays,
 -- marked unavailable). Options: recommended first, then by name. Picks are read
 -- through ns.Sets:Resolve (filed under their buff's current slot).
@@ -167,6 +167,7 @@ function Options:SlotModel(setId)
       if not g then g = {}; bySlot[e.excl] = g end
       g[#g + 1] = {
         buffId = e.id, name = e.name or buffName(e.id), valueText = ns.ViewModel.FormatFx(e.fx),
+        icon = ns.ViewModel.IconFor(e.rankSpell or e.id),
         recommended = e.recommended == true, active = e.status == "ACTIVE", unavailable = false,
       }
     end
@@ -181,7 +182,7 @@ function Options:SlotModel(setId)
       end
       if not found then
         g[#g + 1] = {
-          buffId = buffId, name = buffName(buffId), valueText = "",
+          buffId = buffId, name = buffName(buffId), valueText = "", icon = ns.ViewModel.IconFor(buffId),
           recommended = false, active = false, unavailable = true,
         }
       end
@@ -205,7 +206,7 @@ function Options:SlotModel(setId)
   return out
 end
 
--- BurstModel(setId) -> { {buffId, name, tracked, bagCount, unavailable} }: tracked buffs first in
+-- BurstModel(setId) -> { {buffId, name, icon, tracked, bagCount, unavailable} }: tracked buffs first in
 -- the set's order (also ones that are no longer obtainable, so they can be removed),
 -- then every other obtainable burst buff by name.
 function Options:BurstModel(setId)
@@ -224,13 +225,14 @@ function Options:BurstModel(setId)
     local e = available[id]
     out[#out + 1] = {
       buffId = id, name = e and e.name or buffName(id), tracked = true, bagCount = count(id),
-      unavailable = e == nil,
+      unavailable = e == nil, icon = ns.ViewModel.IconFor(e and e.rankSpell or id),
     }
   end
   local rest = {}
   for id, e in pairs(available) do
     if not tracked[id] then
-      rest[#rest + 1] = { buffId = id, name = e.name or buffName(id), tracked = false, bagCount = count(id) }
+      rest[#rest + 1] = { buffId = id, name = e.name or buffName(id), tracked = false, bagCount = count(id),
+                          icon = ns.ViewModel.IconFor(e.rankSpell or id) }
     end
   end
   table.sort(rest, function(a, b)
@@ -353,6 +355,28 @@ local function newCheck(parent, x, y)
   return cb
 end
 
+-- A 16x16 icon between the checkbox and its label (the label moves right of the icon
+-- while the icon is shown; setRowIcon(row, nil) puts it back next to the checkbox).
+local function addRowIcon(cb, parent)
+  cb.fbIcon = parent:CreateTexture(nil, "ARTWORK")
+  cb.fbIcon:SetSize(16, 16)
+  cb.fbIcon:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+  cb.fbIcon:Hide()
+end
+
+local function setRowIcon(cb, icon)
+  local label, ic = cb.fbLabel, cb.fbIcon
+  label:ClearAllPoints()
+  if icon then
+    ic:SetTexture(icon)
+    ic:Show()
+    label:SetPoint("LEFT", ic, "RIGHT", 4, 0)
+  else
+    ic:Hide()
+    label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+  end
+end
+
 local function newButton(parent, width, height)
   local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
   b:SetSize(width, height or 22)
@@ -409,6 +433,7 @@ local function hideFrom(pool, from)
   for i = from, #pool do
     pool[i]:Hide()
     if pool[i].fbLabel then pool[i].fbLabel:Hide() end
+    if pool[i].fbIcon then pool[i].fbIcon:Hide() end
   end
 end
 
@@ -416,6 +441,7 @@ local function getRadio(i)
   local r = radios[i]
   if not r then
     r = newCheck(setsFrame, 0, 0)
+    addRowIcon(r, setsFrame)
     r.fbLabel:SetWidth(480)
     r:SetScript("OnClick", function(self) Options:PickOption(self.fbSlot, self.fbBuff) end)
     radios[i] = r
@@ -432,8 +458,9 @@ local function getTitle(i)
   return t
 end
 
-local function setRadio(r, slot, buffId, text, checked, grey, x, y)
+local function setRadio(r, slot, buffId, text, checked, grey, x, y, icon)
   r.fbSlot, r.fbBuff = slot, buffId
+  setRowIcon(r, icon)
   place(r, x, y)
   r:Show()
   r:SetChecked(checked)
@@ -456,6 +483,7 @@ local function getBurstRow(i)
   local c = burstChecks[i]
   if c then return c end
   c = newCheck(setsFrame, 0, 0)
+  addRowIcon(c, setsFrame)
   c.fbLabel:SetWidth(380)
   c:SetScript("OnClick", function(self)
     local id = ns.Sets:Active()
@@ -480,6 +508,34 @@ local function getBurstRow(i)
   return c
 end
 
+-- The set selector: a dropdown showing the active (edited) set, or - without a dropdown
+-- template - one button per set (the active one disabled). Returns the next y.
+local function layoutSetBar(activeId, y)
+  if ui.setDropdown then
+    ns.UI.SetDropdown.Refresh(ui.setDropdown)
+    place(ui.setDropdown, 16, y)
+    ui.setDropdown:Show()
+    hideFrom(setButtons, 1)
+    return y - 30
+  end
+  local ids = ns.Sets:List()
+  for i, id in ipairs(ids) do
+    local b = setButtons[i]
+    if not b then
+      b = newButton(setsFrame, 120, 22)
+      b:SetScript("OnClick", function(self) ns.Sets:SetActive(self.fbSet) end)
+      setButtons[i] = b
+    end
+    b.fbSet = id
+    b:SetText(ns.Sets:Get(id).name)
+    b:SetEnabled(id ~= activeId)
+    place(b, 16 + ((i - 1) % 4) * 126, y - math.floor((i - 1) / 4) * 26)
+    b:Show()
+  end
+  hideFrom(setButtons, #ids + 1)
+  return y - math.max(1, math.ceil(#ids / 4)) * 26 - 4
+end
+
 local function layoutSets()
   local L = ns.L
   local activeId, set = ns.Sets:Active()
@@ -496,24 +552,7 @@ local function layoutSets()
   setsSpecLabel:SetText(L.SET_BIND_SPEC)
   burstHeader:SetText(L.OPT_BURST)
 
-  local y = -24
-  -- one button per set; the active (edited) set's button is disabled = selected
-  local ids = ns.Sets:List()
-  for i, id in ipairs(ids) do
-    local b = setButtons[i]
-    if not b then
-      b = newButton(setsFrame, 120, 22)
-      b:SetScript("OnClick", function(self) ns.Sets:SetActive(self.fbSet) end)
-      setButtons[i] = b
-    end
-    b.fbSet = id
-    b:SetText(ns.Sets:Get(id).name)
-    b:SetEnabled(id ~= activeId)
-    place(b, 16 + ((i - 1) % 4) * 126, y - math.floor((i - 1) / 4) * 26)
-    b:Show()
-  end
-  hideFrom(setButtons, #ids + 1)
-  y = y - math.max(1, math.ceil(#ids / 4)) * 26 - 4
+  local y = layoutSetBar(activeId, -24)
 
   -- the default set follows recommendations until a slot is edited
   if set and set.auto then
@@ -563,7 +602,7 @@ local function layoutSets()
       y = y - 22
       for _, o in ipairs(slot.options) do
         nRadio = nRadio + 1
-        setRadio(getRadio(nRadio), slot.slot, o.buffId, optionText(o), slot.picked == o.buffId, o.unavailable, 32, y)
+        setRadio(getRadio(nRadio), slot.slot, o.buffId, optionText(o), slot.picked == o.buffId, o.unavailable, 32, y, o.icon)
         y = y - 22
       end
       nRadio = nRadio + 1
@@ -589,6 +628,7 @@ local function layoutSets()
       local label = b.name .. "  |cffb0b0b0" .. string.format(L.IN_BAGS, b.bagCount) .. "|r"
       if b.unavailable then label = b.name .. "  (" .. L.STATUS_UNAVAILABLE .. ")" end
       c.fbLabel:SetText(label)
+      setRowIcon(c, b.icon)
       if b.unavailable then c.fbLabel:SetTextColor(0.6, 0.6, 0.6) else c.fbLabel:SetTextColor(1, 1, 1) end
       c.fbLabel:Show()
       local up, down = burstUp[nBurst], burstDown[nBurst]
@@ -649,6 +689,7 @@ local function buildSets()
   setsFrame = CreateFrame("Frame", nil, panel)
   setsFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -600)
   setsFrame:SetSize(580, 10)
+  ui.setDropdown = ns.UI.SetDropdown and ns.UI.SetDropdown.Create(setsFrame, 220)
   setsHeader = setsFrame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
   setsHeader:SetPoint("TOPLEFT", setsFrame, "TOPLEFT", 16, 0)
   setsSpecLabel = setsFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")

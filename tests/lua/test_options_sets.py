@@ -226,18 +226,63 @@ def test_rename_enter_commits_escape_cancels(addon):
     assert a.errors() == []
 
 
-def test_switch_set_and_bind_spec(addon):
+def test_set_bar_is_a_dropdown(addon):
     a = boot(addon)
     panel(a)
-    a.run("ns.Sets:Create('Second')")
-    click(a, "(function() for _, b in ipairs(ns.Options.setButtons) do if b:IsShown() and b.fbSet == 2 "
-             "then return b end end end)()")
+    a.run("ns.Sets:Create('Second'); ns.Sets:SetActive(1)")
+    dd = "ns.Options.ui.setDropdown"
+    assert a.eval(dd + ":IsShown()") is True
+    assert a.eval("#ns.Options.setButtons") == 0
+    assert [e["text"] for e in a.eval(dd + ":__entries()").values()] == ["Main", "Second"]
+    assert a.eval(dd + ":GetText()") == "Main"
+    a.run(dd + ":__select(2)")
     assert a.eval("(ns.Sets:Active())") == 2
+    assert a.eval(dd + ":GetText()") == "Second"
     click(a, "ns.Options.ui.specs[2]")
     assert a.eval("ns.Sets:Get(2).spec") == 2
     click(a, "ns.Options.ui.specs[0]")
     assert a.eval("ns.Sets:Get(2).spec") is None
     assert a.errors() == []
+
+
+def test_set_bar_button_fallback_without_dropdown(addon):
+    a = addon()
+    a.run("__dropdown.available = false")  # the panel is built at load
+    a.load_addon()
+    a.run(SETUP)
+    a.run("ns.CharDB.sets = nil; ns.CharDB.activeSet = nil; ns.CharDB.nextSetId = nil")
+    a.run("ns.Sets:EnsureDefault()")
+    panel(a)
+    a.run("ns.Sets:Create('Second')")
+    assert a.eval("ns.Options.ui.setDropdown") is None
+    click(a, "(function() for _, b in ipairs(ns.Options.setButtons) do if b:IsShown() and b.fbSet == 2 "
+             "then return b end end end)()")
+    assert a.eval("(ns.Sets:Active())") == 2
+    assert a.errors() == []
+
+
+def test_option_and_burst_rows_have_icons(addon):
+    a = boot(addon)
+    a.run("C_Spell = {GetSpellTexture = function(id) return 'tex' .. id end}")
+    a.run("ns.Catalog.Build = (function(f) return function(...) local c = f(...) "
+          "for _, e in ipairs(c.FLASK) do if e.id == 11 then e.rankSpell = 111 end end return c end end)"
+          "(ns.Catalog.Build)")
+    a.run("ns.Sets:AddBurst(1, 30)")
+    panel(a)
+    icon = lambda w: a.eval(w + ".fbIcon.__texture")
+    assert icon(radio("slotA", 10)) == "tex10"
+    assert icon(radio("slotA", 11)) == "tex111"  # rankSpell wins over the buff id
+    assert a.eval(radio("slotA", 11) + ".fbIcon:IsShown()") is True
+    assert a.eval(radio("slotA", False) + ".fbIcon:IsShown()") is False  # "not used": no icon
+    assert icon(burst_widget("burstChecks", 30)) == "tex30"
+    assert icon(burst_widget("burstChecks", 31)) == "tex31"
+
+
+def test_icon_falls_back_to_question_mark(addon):
+    a = boot(addon)
+    panel(a)
+    tex = a.eval(radio("slotA", 10) + ".fbIcon.__texture")
+    assert tex == a.eval("ns.ViewModel.IconFor(10)") and "INV_Misc_QuestionMark" in tex
 
 
 def test_spec_labels_use_tree_names(addon):
