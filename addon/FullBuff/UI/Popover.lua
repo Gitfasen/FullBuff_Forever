@@ -173,7 +173,6 @@ function Popover:Refresh()
     end
     if it.status == "UNAVAILABLE" then sub = L.SET_UNAVAILABLE end
     local function append(text) sub = (sub ~= "" and (sub .. "  ·  ") or "") .. text end
-    if it.via then append(L.VIA:format(it.via)) end
     if it.upgrade then append(L.RANK_UPGRADE) end
     if nameCount[it.name] > 1 and it.slotName then
       append(it.slotName)

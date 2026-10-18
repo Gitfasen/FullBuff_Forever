@@ -353,7 +353,7 @@ def test_launcher_tooltip_all_active_and_empty(addon):
         assert any(l.startswith(empty) for l in lines), lines
 
 
-def test_popover_upgrade_and_via_sublines(addon):
+def test_popover_upgrade_subline_and_slot_filled_by_other_buff(addon):
     a = addon()
     a.load_addon()
     a.run(FIXTURE)
@@ -361,11 +361,14 @@ def test_popover_upgrade_and_via_sublines(addon):
       cat.CLASS[1].upgrade = true
       table.insert(cat.CLASS, {id=4, cat="CLASS", name="Charlie", excl="s2", fx={STR=5}, status="ACTIVE"})
       ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()""")
-    items = {l["name"]: l for l in popover_lines(a) if l["kind"] == "item"}
-    assert items[CHECK + " Alpha"]["sub"] == "+10 Strength  ·  higher rank available"
-    assert items[CHECK + " Bravo"]["sub"] == "+5 Strength  ·  via Charlie"
+    items = [l for l in popover_lines(a) if l["kind"] == "item"]
+    by = {l["name"]: l for l in items}
+    assert by[CHECK + " Alpha"]["sub"] == "+10 Strength  ·  higher rank available"
+    # Bravo picked, Charlie (same slot) up: the row is Charlie, plain
+    assert by[CHECK + " Charlie"]["sub"] == "+5 Strength" and by[CHECK + " Charlie"]["id"] == 4
+    assert not any("Bravo" in l["name"] for l in items)
+    assert a.eval("ns.ViewModel:Get().badge") == 1  # only the burst Rage (no bags)
     a.run("ns.SetLanguage('uk'); ns.ViewModel:Invalidate(); ns.UI.Popover:Refresh()")
     subs = [l["sub"] for l in popover_lines(a) if l["kind"] == "item"]
     assert any(s.endswith("доступний вищий ранг") for s in subs)
-    assert any(s.endswith("через Charlie") for s in subs)
     assert a.errors() == []

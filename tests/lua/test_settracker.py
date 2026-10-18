@@ -124,29 +124,31 @@ ns.Bags.CountBuff = function() return 0 end
 ns.ViewModel.FormatFx = function(fx) return fx and fx.txt or '' end
 ns.ViewModel.IconFor = function(sp) return 'icon' .. tostring(sp) end
 CAT = {order={'CLASS', 'CAMPING'},
-  CLASS={{id=21564, name='Prayer of Fortitude', excl='STA', status='UNAVAILABLE', fx={txt='p'}},
-         {id=10938, name='Power Word: Fortitude', excl='STA', status='ACTIVE', fx={txt='f'}},
-         {id=9885, name='Mark of the Wild', excl='STATS', status='ACTIVE', fx={txt='m'}}},
-  CAMPING={{id=1230653, name='Boosted Stats', excl='STATS', status='CAN_ADD', fx={txt='b'}}}}
+  CLASS={{id=21564, name='Prayer of Fortitude', excl='STA', status='UNAVAILABLE', fx={txt='p'}, rankSpell=21564},
+         {id=10938, name='Power Word: Fortitude', excl='STA', status='ACTIVE', fx={txt='f'}, rankSpell=10938},
+         {id=9885, name='Mark of the Wild', excl='STATS', status='CAN_ADD', fx={txt='m'}, rankSpell=9885}},
+  CAMPING={{id=1230653, name='Boosted Stats', excl='STATS', status='ACTIVE', fx={txt='b'}, rankSpell=1230653}}}
 """
 
 
-def test_slot_satisfied_by_other_active_member(addon):
+def test_slot_filled_by_other_active_buff_shows_that_buff(addon):
     a = addon()
     a.run(VIA)
-    a.run("__ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={STA=21564, STATS=1230653}, burst={}})")
+    a.run("__ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={STA=21564, STATS=9885}, burst={}})")
     r = a.eval("__ns.__r")
-    got = {x["buffId"]: x for x in r["rows"].values()}
-    assert got[21564]["status"] == "ACTIVE" and got[21564]["via"] == "Power Word: Fortitude"
-    assert got[1230653]["status"] == "ACTIVE" and got[1230653]["via"] == "Mark of the Wild"
-    assert got[1230653]["valueText"] == "m"
+    got = {x["slot"]: x for x in r["rows"].values()}
+    # Prayer picked, PW:F up -> row is PW:F; MotW picked, camp Boosted Stats up -> row is Boosted Stats
+    assert (got["STA"]["buffId"], got["STA"]["name"], got["STA"]["status"]) == (10938, "Power Word: Fortitude", "ACTIVE")
+    assert (got["STATS"]["buffId"], got["STATS"]["name"], got["STATS"]["status"]) == (1230653, "Boosted Stats", "ACTIVE")
+    assert got["STATS"]["valueText"] == "b" and got["STATS"]["icon"] == "icon1230653"
+    assert got["STATS"]["pickedId"] == 9885 and got["STA"]["pickedId"] == 21564
     assert r["missingCount"] == 0 and r["unavailableCount"] == 0
     assert a.errors() == []
 
 
-def test_picked_active_has_no_via(addon):
+def test_picked_active_shows_itself(addon):
     a = addon()
     a.run(VIA)
     a.run("__ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={STA=10938}, burst={}})")
     x = a.eval("__ns.__r").rows[1]
-    assert x["status"] == "ACTIVE" and x["via"] is None
+    assert x["status"] == "ACTIVE" and x["buffId"] == 10938 and x["pickedId"] is None

@@ -11,7 +11,8 @@ local _, ns = ...
 --              while the spec is not detected automatically)
 --   sets    = { {id, name, active}... }   in ns.Sets:List() order,
 --   list    = SetTracker rows of the active set {slot,slotName,buffId,name,icon,valueText,status,
---             via,upgrade,bagCount} (via: the active buff filling the slot; upgrade: a lower rank is up)
+--             pickedId,upgrade,bagCount} (a slot filled by another active buff shows that buff;
+--             pickedId: the set's pick then; upgrade: a lower rank is up)
 --             (status ACTIVE, MISSING, UNAVAILABLE, already in that order),
 --   burst   = SetTracker burst rows {buffId,name,icon,bagCount,unavailable},
 --   empty   = true when the active set has neither picks nor burst buffs (or there is no set),

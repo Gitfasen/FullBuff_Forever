@@ -437,28 +437,22 @@ def test_picked_active_upgrade_max_is_current_minus_active_plus_best(addon):
     assert rows["STR"] == (100, 106)
 
 
-# --- fix A: a slot satisfied by another active member ---
-def test_active_member_better_than_pick_keeps_slot(addon):
-    # active A {STR=10} in the 100; pick B {STR=5} scores lower -> slot stays A: max 100
+# --- fix A: a slot filled by another active buff counts as satisfied (max = current) ---
+@pytest.mark.parametrize("picked_str", [5, 10, 15])
+def test_pick_not_up_other_active_member_fills_slot(addon, picked_str):
+    # active A {STR=10} in the 100; pick B (weaker, equal or stronger): slot filled by A
     rows, _ = compute_picks(addon, """
       E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
-      E(2, "CAMPING", "B", "food", {STR=5}),""", "{food=2}")
+      E(2, "CAMPING", "B", "food", {STR=%d}),""" % picked_str, "{food=2}")
     assert rows["STR"] == (100, 100)
 
 
-def test_active_member_equal_to_pick_keeps_slot(addon):
+def test_active_member_with_upgrade_fills_slot_at_its_rank(addon):
+    # A up at a lower rank (activeFx STR 4, best 10); pick B: slot filled by A as it is
     rows, _ = compute_picks(addon, """
-      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
-      E(2, "CAMPING", "B", "food", {STR=10}),""", "{food=2}")
-    assert rows["STR"] == (100, 100)
-
-
-def test_pick_better_than_active_member_replaces_it(addon):
-    # active A {STR=10}; pick B {STR=15}: 100 - 10 + 15
-    rows, _ = compute_picks(addon, """
-      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      {id=1, cat="CLASS", name="A", excl="food", fx={STR=10}, activeFx={STR=4}, status="ACTIVE", upgrade=true},
       E(2, "CAMPING", "B", "food", {STR=15}),""", "{food=2}")
-    assert rows["STR"] == (100, 105)
+    assert rows["STR"] == (100, 100)
 
 
 def test_unavailable_pick_with_active_member_keeps_it(addon):

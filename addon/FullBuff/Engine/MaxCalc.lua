@@ -56,9 +56,9 @@ end
 -- With `picks` ({[slot]=buffId|false}) the chosen entries are those whose buff id is
 -- picked (ACTIVE or CAN_ADD, not burst), grouped by the entry's current excl (the
 -- slot key is ignored, so a rebuild that moved a buff still works). If two picked
--- entries share a group the higher Score wins (tie: lower id). An ACTIVE entry of
--- the same group that was not picked replaces the pick when it scores at least as
--- well (max for that slot = the buff already up).
+-- entries share a group the higher Score wins (tie: lower id). When the pick is not
+-- up but another buff of its group is ACTIVE, the slot counts as filled by that buff
+-- (max for that slot = current).
 function MaxCalc:Compute(state, catalog, picks)
   local reported = state and state.stats or {}
   catalog = catalog or {}
@@ -96,16 +96,14 @@ function MaxCalc:Compute(state, catalog, picks)
       end
     end
   end
-  -- A slot whose picked buff is not the one up: keep the active member when it
-  -- scores at least as well as the pick (the slot is already filled by it).
+  -- A slot whose picked buff is not up while another buff of the slot is: the slot
+  -- is filled by that buff as it is (its active rank), so max = current there.
   if pickedId then
     for _, e in ipairs(all) do
       local b = best[groupKey(e)]
-      if b and b.e ~= e and e.status == "ACTIVE" and not e.burst and e.excl then
-        local sc = ns.Scoring:Score(e.fx or {}, state)
-        if sc >= b.score and (not b.kept or sc > b.score) then
-          b.e, b.score, b.kept = e, sc, true
-        end
+      if b and b.e.status ~= "ACTIVE" and e.status == "ACTIVE" and not e.burst and e.excl
+        and (not b.kept or (e.id or 0) < (b.kept.id or 0)) then
+        b.e, b.kept = { id = e.id, excl = e.excl, fx = e.activeFx or e.fx }, e
       end
     end
   end
