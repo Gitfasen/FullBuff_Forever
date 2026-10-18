@@ -3,3 +3,4 @@ tools/out/
 __pycache__/
 .superpowers/
 .pytest_cache/
+dist/

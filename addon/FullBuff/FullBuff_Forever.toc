@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: FullBuff
 ## Notes: Shows your maximum stats with every obtainable buff and where to get missing ones.
-## Version: 0.1.0
+## Version: 1.0.0
 ## SavedVariables: FullBuffDB
 ## SavedVariablesPerCharacter: FullBuffCharDB
 ## IconTexture: Interface\Icons\Spell_Holy_WordFortitude
