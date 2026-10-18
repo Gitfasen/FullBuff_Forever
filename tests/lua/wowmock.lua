@@ -131,6 +131,12 @@ GameTooltip.SetOwner = function(self, owner) self.__owner = owner; self.__lines 
 GameTooltip.GetOwner = function(self) return self.__owner end
 GameTooltip.AddLine = function(self, t) self.__lines[#self.__lines + 1] = tostring(t) end
 GameTooltip.AddDoubleLine = function(self, a, b) self.__lines[#self.__lines + 1] = tostring(a) .. " | " .. tostring(b) end
+-- World map: Show/SetMapID are recorded (__map.shown_calls via ShowUIPanel, __map.mapID).
+__map = { shows = 0, mapIDs = {} }
+WorldMapFrame = newFrame("Frame", "WorldMapFrame")
+WorldMapFrame.__shown = false
+function WorldMapFrame:SetMapID(id) __map.mapID = id; __map.mapIDs[#__map.mapIDs + 1] = id end
+function ShowUIPanel(f) __map.shows = __map.shows + 1; f:Show() end
 GetScreenWidth = function() return 1920 end
 GetScreenHeight = function() return 1080 end
 GetCursorPosition = function() return 0, 0 end

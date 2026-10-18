@@ -123,6 +123,16 @@ local function draw(key, src)
   l:AddMinimapIconMap(Pins, d.minimap, src.mapID, src.x, src.y, true, true)
 end
 
+-- Open the world map on the pin's map. ShowUIPanel can be blocked in combat, so the map
+-- is left alone then (the pins are still added). Never raises.
+function Pins:FocusMap(mapID)
+  if not mapID or not WorldMapFrame or InCombatLockdown() then return false end
+  return (pcall(function()
+    if not WorldMapFrame:IsShown() then ShowUIPanel(WorldMapFrame) end
+    WorldMapFrame:SetMapID(mapID)
+  end))
+end
+
 local function changed()
   if ns.Events then ns.Events:Fire("FULLBUFF_PINS") end
 end
@@ -136,13 +146,14 @@ function Pins:Add(buffId, index)
   db[key] = saved(src)
   draw(key, src)
   changed()
+  Pins:FocusMap(src.mapID)
   return true
 end
 
 -- Pin every source with coordinates; returns how many were pinned.
 function Pins:AddAll(buffId)
   local list = ns.Sources and ns.Sources[buffId]
-  local n = 0
+  local n, firstMap = 0, nil
   local db = store()
   if not list or not db then return 0 end
   for i = 1, #list do
@@ -151,10 +162,14 @@ function Pins:AddAll(buffId)
       local key = makeKey(buffId, i)
       db[key] = saved(src)
       draw(key, src)
+      firstMap = firstMap or src.mapID
       n = n + 1
     end
   end
-  if n > 0 then changed() end
+  if n > 0 then
+    changed()
+    Pins:FocusMap(firstMap)
+  end
   return n
 end
 
