@@ -3,7 +3,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from tools.model import STAT_KEYS, Buff, Rank, Source
+from tools.model import Buff, Rank, Source
 
 BASE = "https://wowclassicforever.info"
 USER_AGENT = "FullBuff-build"
@@ -11,10 +11,6 @@ SCRIPT_RE = re.compile(r'<script type="application/json"[^>]*>(.*?)</script>', r
 # "finder-en-<hash>.json" only; "finder-en-tips-<hash>.json" is a different file.
 FINDER_RE = re.compile(r"/assets/consumables/finder-en-[0-9a-f]+\.json")
 INCREASES_RE = re.compile(r"increase[sd]", re.I)
-NUMBER_RE = re.compile(r"\d+")
-# fx keys given in percent: kept at the top band's value when no band number matches.
-PCT_KEYS = frozenset(k for k in STAT_KEYS if k.endswith("_PCT")) | {"CRIT", "SPELL_CRIT", "HIT",
-                                                                     "SPELL_HIT"}
 
 
 @dataclass(frozen=True)
@@ -53,33 +49,58 @@ def parse_camping(html: str) -> list[CampBuff]:
     return result
 
 
-def _numbers(text: str) -> list[int]:
-    return [int(n) for n in NUMBER_RE.findall(text)]
+_ALL_STATS = ("STR", "AGI", "STA", "INT", "SPI")
+# fx key(s) -> phrase in a camp band's description; the first group is the value.
+_BAND_PHRASES = (
+    (("ARMOR",), re.compile(r"(\d+) Armor", re.I)),
+    (_ALL_STATS, re.compile(r"(\d+) increase to all stats", re.I)),
+    (("STAT_PCT",), re.compile(r"(\d+)% increased stats", re.I)),
+    (("MP5",), re.compile(r"regenerate (\d+) Mana every 5 sec", re.I)),
+    (("AP",), re.compile(r"(\d+) increased (?:melee )?Attack Power", re.I)),
+    (("STR",), re.compile(r"(\d+) increased Strength", re.I)),
+    (("AGI",), re.compile(r"(\d+) increased Agility", re.I)),
+    (("STA",), re.compile(r"(\d+) increased Stamina", re.I)),
+    (("INT",), re.compile(r"(\d+) increased Intellect", re.I)),
+    (("SPI",), re.compile(r"(\d+) increased Spirit", re.I)),
+    (("CRIT", "SPELL_CRIT"), re.compile(r"(\d+)% increased critical strike", re.I)),
+)
+COOLDOWN_RE = re.compile(r"All camping features share a cooldown of[^.]*\.?", re.I)
 
 
-def _positions(fx: dict[str, float], top_text: str) -> dict[str, int]:
-    """fx key -> index of its value among the top band's numbers (keys not found are left out)."""
-    nums = _numbers(top_text)
-    return {k: nums.index(v) for k, v in fx.items() if v in nums}
+def parse_band(text: str) -> dict[str, int]:
+    """fx values stated in one camp band's description, found by phrase (the shared-cooldown
+    sentence is ignored; resistances and other effects are not fx)."""
+    text = COOLDOWN_RE.sub("", text)
+    out: dict[str, int] = {}
+    for keys, rx in _BAND_PHRASES:
+        m = rx.search(text)
+        if m:
+            for k in keys:
+                out.setdefault(k, int(m.group(1)))
+    return out
 
 
-def band_ranks(spell: int, fx: dict[str, float], bands, pct_keys=PCT_KEYS) -> list[Rank]:
-    """One rank per level band (same spell id). fx is the top band's: each key takes the number
-    at the position its top value has in the top band's text. A key not found is skipped, except
-    percent keys, which keep the top value. A band too short for a position skips that key."""
-    pos = _positions(fx, bands[-1][1])
+def band_ranks(spell: int, fx: dict[str, float], bands) -> list[Rank]:
+    """One rank per level band (same spell id). Each band's fx comes from the phrases in its
+    text; a key absent from a band's text is absent from that rank. A key no band mentions
+    keeps the buff's own value in every rank."""
+    parsed = [(lvl, parse_band(text)) for lvl, text in bands]
     ranks = []
-    for lvl, text in bands:
-        nums = _numbers(text)
+    for lvl, found in parsed:
         rfx = {}
         for k, v in fx.items():
-            if k in pos:
-                if pos[k] < len(nums):
-                    rfx[k] = nums[pos[k]]
-            elif k in pct_keys:
+            if any(k in f for _, f in parsed):
+                if k in found:
+                    rfx[k] = found[k]
+            else:
                 rfx[k] = v
         ranks.append(Rank(spell=spell, lvl=lvl, fx=rfx))
     return ranks
+
+
+def _matches(fx: dict[str, float], top_text: str) -> int:
+    found = parse_band(top_text)
+    return sum(1 for k, v in fx.items() if found.get(k) == v)
 
 
 def _apply_bands(b: Buff, group: list[CampBuff]) -> None:
@@ -89,7 +110,7 @@ def _apply_bands(b: Buff, group: list[CampBuff]) -> None:
     for camp in group:
         if len(camp.bands) < 2:
             continue
-        n = len(_positions(b.fx, camp.bands[-1][1]))
+        n = _matches(b.fx, camp.bands[-1][1])
         if n > best_n:
             best, best_n = camp, n
     if not best:
