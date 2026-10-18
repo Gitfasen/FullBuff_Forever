@@ -277,9 +277,8 @@ function Sets:RefreshAuto()
   end
 end
 
-ns.Events:On("PLAYER_ENTERING_WORLD", function() worldReady = true end)
-
-ns.Events:On("FULLBUFF_STATE", function()
+-- Spec binding (switch to the set bound to the current spec) + auto picks.
+local function sync()
   if not worldReady then return end
   local c = db()
   if not c then return end
@@ -295,4 +294,13 @@ ns.Events:On("FULLBUFF_STATE", function()
     end
   end
   Sets:RefreshAuto()
+end
+
+-- After PLAYER_ENTERING_WORLD run one catch-up even if no new FULLBUFF_STATE fires
+-- (the snapshot may not change after the world loads).
+ns.Events:On("PLAYER_ENTERING_WORLD", function()
+  worldReady = true
+  ns.Events:Debounce("setsWorld", 0.5, sync)
 end)
+
+ns.Events:On("FULLBUFF_STATE", sync)

@@ -263,3 +263,22 @@ def test_default_picks_prefer_class_buffs(addon):
     # buff ignored -> recommendation; slotB: no class buff -> recommendation
     assert picks == {"STA": 10938, "INT": 23028, "BURSTY": 500, "slotB": 20}
     assert dict(a.eval("ns.Sets:Get(ns.Sets:Create('X')).picks")) == picks
+
+
+# --- fix A: catch-up after PLAYER_ENTERING_WORLD without a new FULLBUFF_STATE ---
+def test_entering_world_catches_up_without_state_event(addon):
+    a = boot(addon)
+    a.run("ns.PlayerState.Refresh = function() end")  # no FULLBUFF_STATE after PEW
+    a.run("ns.Sets:Create('One'); ns.Sets:BindSpec(2, 1)")
+    a.run("ns.Scoring.MarkRecommended = function(_, cat) for _, c in ipairs(cat.order) do "
+          "for _, e in ipairs(cat[c]) do if e.id == 10 or e.id == 21 then e.recommended = true end end end end")
+    a.fire_event("PLAYER_ENTERING_WORLD", True, False)
+    assert a.eval("(ns.Sets:Active())") == 1  # debounced, not yet
+    a.advance(0.6)
+    assert a.eval("(ns.Sets:Active())") == 2
+    assert dict(a.eval("ns.Sets:Get(1).picks")) == {"slotA": 10, "slotB": 21}
+    # runs once: a later spec change still needs a state event
+    a.run("n = 0; ns.Events:On('FULLBUFF_SET', function() n = n + 1 end)")
+    a.advance(5)
+    assert a.eval("n") == 0
+    assert a.errors() == []
