@@ -159,3 +159,13 @@ def test_group_members_text_capped_at_six(addon):
 def test_model_has_no_unused_status(addon):
     a, m = model(addon, 1)
     assert m["status"] is None
+
+
+def test_card_row_pin_opens_map_on_its_mapid(addon):
+    a = addon()
+    a.load_addon()
+    a.run(SETUP % 1)
+    a.run("ns.UI.OpenDetail(1)")
+    a.run("local r = ns.Detail:GetRows()[1]; r.pin:GetScript('OnClick')(r.pin)")
+    assert a.eval("WorldMapFrame:IsShown()") is True
+    assert a.eval("__map.mapID") == a.eval("ns.Sources[1][1].mapID")

@@ -1,12 +1,11 @@
 import pytest
 
-CATEGORIES = "CLASS WORLD CAMPING FLASK ELIXIR FOOD SCROLL WEAPON QUEST TRINKET POTION".split()
 STATS = ("STR AGI STA INT SPI AP RAP SPELL_DMG HEAL ARMOR HP MANA MP5 HP5 CRIT SPELL_CRIT HIT "
          "SPELL_HIT STAT_PCT ARMOR_PCT STR_PCT AGI_PCT STA_PCT INT_PCT SPI_PCT").split()
 KINDS = "vendor drop quest craft npc object camping".split()
-PLAIN = ("TITLE STATUS_ACTIVE STATUS_CAN_ADD STATUS_UNAVAILABLE RECOMMENDED SHOW_ONLY_MISSING "
+PLAIN = ("TITLE STATUS_UNAVAILABLE "
          "STALE_AFTER_COMBAT SOURCE_UNKNOWN PIN PIN_ALL CLEAR_PINS WHERE_TO_GET DURATION MIN_LEVEL "
-         "STACKS_WITH_NONE NOT_STACK_WITH SCORE OPT_SPEC OPT_SPEC_AUTO OPT_WEIGHTS OPT_CATEGORIES "
+         "STACKS_WITH_NONE NOT_STACK_WITH SCORE OPT_SPEC OPT_SPEC_AUTO OPT_WEIGHTS "
          "OPT_ALL_STATS OPT_SCALE OPT_RESET_POS OPT_LANGUAGE TOOLTIP_PROGRESS TOOLTIP_MISSING "
          "SPEC_HINT").split()
 
@@ -74,7 +73,7 @@ def test_ukrainian_and_english_have_same_keys(addon):
     en = sorted(a.eval("(function() local t = {} for k in pairs(ns.Locales.enUS) do t[#t+1] = k end return t end)()").values())
     uk = sorted(a.eval("(function() local t = {} for k in pairs(ns.Locales.ukUA) do t[#t+1] = k end return t end)()").values())
     assert en == uk
-    expected = (PLAIN + ["CATEGORY_" + c for c in CATEGORIES] + ["STAT_" + s for s in STATS]
+    expected = (PLAIN + ["STAT_" + s for s in STATS]
                 + ["SRC_" + k.upper() for k in KINDS])
     assert set(expected) <= set(en)
 
@@ -102,6 +101,7 @@ def test_savedvars_defaults_applied(addon):
     assert a.eval("ns.DB.lang") == "en"
     assert a.eval("ns.DB.scale") == 1
     assert a.eval("ns.DB.showAllStats") is False and a.eval("ns.DB.allStats") is None
+    assert a.eval("ns.DB.onlyMissing") is None and a.eval("ns.DB.hiddenCats") is None
     assert a.eval("type(ns.CharDB.pins)") == "table"
     assert a.eval("ns.DB == FullBuffDB and ns.CharDB == FullBuffCharDB")
 
@@ -110,7 +110,7 @@ def test_savedvars_keep_existing_and_fill_missing(addon):
     a = addon(mocks={"FullBuffDB": "{ lang = 'uk', scale = 1.5 }", "FullBuffCharDB": "{}"})
     a.load_addon()
     assert a.eval("ns.DB.scale") == 1.5
-    assert a.eval("ns.DB.onlyMissing") is False
+    assert a.eval("ns.DB.onlyMissing") is None and a.eval("ns.DB.hiddenCats") is None
     assert a.eval("ns.L.PIN") == a.eval("ns.Locales.ukUA.PIN")
 
 

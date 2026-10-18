@@ -4,20 +4,22 @@ local _, ns = ...
 -- No frame code here, so it is fully testable.
 --
 -- Build(state?, catalog?) -> {
---   header  = { class, specName, specHint, level, stale, rows = { {stat,label,current,max,diff}... } },
---             (specName: the talent tree's name, else "Specialization N"; specHint: set
+--   header  = { class, specName, specHint, level, stale, setName,
+--               rows = { {stat,label,current,max,diff}... } },
+--             (rows: current -> maximum reachable with the ACTIVE SET's picks, MaxCalc:Compute;
+--              specName: the talent tree's name, else "Specialization N"; specHint: set
 --              while the spec is not detected automatically)
---   sections= { { cat, title, activeCount, total, collapsed,
---                 items = { {id, icon, name, valueText, status, recommended} } } },
---   badge   = number of recommended buffs that can still be added (non-burst),
---   tooltip = { progress = percentOfMax (0..100), missing = { names... } },
+--   sets    = { {id, name, active}... }   in ns.Sets:List() order,
+--   list    = SetTracker rows of the active set {slot,slotName,buffId,name,icon,valueText,status,
+--             pickedId,upgrade,bagCount} (a slot filled by another active buff shows that buff;
+--             pickedId: the set's pick then; upgrade: a lower rank is up)
+--             (status ACTIVE, MISSING, UNAVAILABLE, already in that order),
+--   burst   = SetTracker burst rows {buffId,name,icon,bagCount,unavailable},
+--   empty   = true when the active set has neither picks nor burst buffs (or there is no set),
+--   badge   = SetTracker missingCount (MISSING rows + tracked burst with no bags),
+--   tooltip = { setName, progress = percentOfMax (0..100), missing = { names... } },
 -- }
--- Section items are ordered ACTIVE, CAN_ADD (recommended first). UNAVAILABLE entries (e.g. the
--- player is below the required level) are not listed at all; a section left empty is dropped.
--- activeCount/total ignore the "only missing" filter; total excludes UNAVAILABLE.
--- Sections of categories with ns.DB.hiddenCats[cat] == true are omitted from `sections`
--- only; MaxCalc, the badge and the tooltip still count them (hiding is display-only).
--- With ns.DB.onlyMissing only CAN_ADD items are listed and empty sections are dropped.
+-- tooltip.missing: names of MISSING rows, then of available burst buffs with bagCount 0.
 --
 -- valueText format (FormatFx): "+25 Agility, +2% Critical strike". Entries follow the
 -- canonical stat order, then percent keys; "%" for CRIT/HIT/SPELL_*, and *_PCT keys
@@ -27,7 +29,6 @@ ns.ViewModel = VM
 
 local MAX_FX = 4
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
-local STATUS_RANK = { ACTIVE = 1, CAN_ADD = 2, UNAVAILABLE = 3 }
 local PERCENT_STAT = { CRIT = true, SPELL_CRIT = true, HIT = true, SPELL_HIT = true }
 local PCT_ORDER = { "STAT_PCT", "STR_PCT", "AGI_PCT", "STA_PCT", "INT_PCT", "SPI_PCT", "ARMOR_PCT" }
 
@@ -95,23 +96,13 @@ local function className(class)
   return class
 end
 
-local function sortItems(items)
-  for i, it in ipairs(items) do it.__i = i end
-  table.sort(items, function(a, b)
-    local ra, rb = STATUS_RANK[a.status] or 9, STATUS_RANK[b.status] or 9
-    if ra ~= rb then return ra < rb end
-    if a.recommended ~= b.recommended then return a.recommended end
-    return a.__i < b.__i
-  end)
-  for _, it in ipairs(items) do it.__i = nil end
-end
-
 function VM:Build(state, catalog)
   local L = ns.L
-  local DB = ns.DB or {}
   state = state or ns.PlayerState:Get()
   catalog = catalog or ns.Catalog:Build(state)
-  local calc = ns.MaxCalc:Compute(state, catalog) -- also marks entry.recommended
+  local activeId, set = ns.Sets:Active()
+  local calc = ns.MaxCalc:Compute(state, catalog, ns.Sets:Resolve(set)) -- also marks entry.recommended
+  local tracked = ns.SetTracker:Evaluate(state, catalog, set or { picks = {}, burst = {} })
 
   local header = {
     class = className(state.class),
@@ -119,48 +110,43 @@ function VM:Build(state, catalog)
     specHint = (state.specAuto == false) and L.SPEC_HINT or nil,
     level = state.level,
     stale = state.stale and true or false,
+    setName = set and set.name or "",
     rows = {},
   }
   for i, r in ipairs(calc.rows) do
     header.rows[i] = { stat = r.stat, label = label(r.stat), current = r.current, max = r.max, diff = r.diff }
   end
 
-  local sections = {}
-  for _, cat in ipairs(catalog.order or {}) do
-    if not (DB.hiddenCats and DB.hiddenCats[cat]) then
-      local entries = catalog[cat] or {}
-      local sec = { cat = cat, title = L["CATEGORY_" .. cat], activeCount = 0, total = 0,
-                    collapsed = (DB.collapsed and DB.collapsed[cat]) and true or false, items = {} }
-      for _, e in ipairs(entries) do
-        if e.status == "ACTIVE" then sec.activeCount = sec.activeCount + 1 end
-        if e.status ~= "UNAVAILABLE" then sec.total = sec.total + 1 end
-        if e.status ~= "UNAVAILABLE" and (not DB.onlyMissing or e.status == "CAN_ADD") then
-          sec.items[#sec.items + 1] = {
-            id = e.id, icon = iconFor(e.rankSpell or e.id), name = e.name,
-            valueText = VM.FormatFx(e.fx), status = e.status, recommended = e.recommended and true or false,
-          }
-        end
-      end
-      sortItems(sec.items)
-      if #sec.items > 0 then sections[#sections + 1] = sec end
-    end
+  local sets = {}
+  for _, id in ipairs(ns.Sets:List()) do
+    local s = ns.Sets:Get(id)
+    sets[#sets + 1] = { id = id, name = s and s.name or tostring(id), active = (id == activeId) }
   end
 
   local names = {}
-  for i, e in ipairs(calc.missing) do names[i] = e.name end
+  for _, r in ipairs(tracked.rows) do
+    if r.status == "MISSING" then names[#names + 1] = r.name end
+  end
+  for _, b in ipairs(tracked.burst) do
+    if b.bagCount == 0 and not b.unavailable then names[#names + 1] = b.name end
+  end
 
   return {
     header = header,
-    sections = sections,
-    badge = calc.missingCount,
-    tooltip = { progress = calc.percentOfMax, missing = names },
+    sets = sets,
+    list = tracked.rows,
+    burst = tracked.burst,
+    empty = (#tracked.rows == 0 and #tracked.burst == 0),
+    badge = tracked.missingCount,
+    tooltip = { setName = header.setName, progress = calc.percentOfMax, missing = names },
   }
 end
 
 -- Get() -> the view model of the current PlayerState snapshot, built once and
 -- shared by the launcher, its tooltip, the popover and the detail card (vm.catalog
 -- is the catalog it was built from). Rebuilt for a new snapshot (FULLBUFF_STATE),
--- a language change, or after Invalidate() (display options).
+-- a language change, a set change (FULLBUFF_SET), a bag rescan (FULLBUFF_BAGS), or after
+-- Invalidate() (display options).
 local cache
 
 function VM:Invalidate()
@@ -180,3 +166,5 @@ end
 
 ns.Events:On("FULLBUFF_STATE", function() VM:Invalidate() end)
 ns.Events:On("FULLBUFF_LANGUAGE", function() VM:Invalidate() end)
+ns.Events:On("FULLBUFF_SET", function() VM:Invalidate() end)
+ns.Events:On("FULLBUFF_BAGS", function() VM:Invalidate() end)

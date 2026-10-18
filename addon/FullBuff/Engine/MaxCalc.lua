@@ -50,33 +50,83 @@ local function safeDiv(v, m)
   return v
 end
 
-local function categoryIndex()
-  local idx = {}
-  local cats = ns.Catalog and ns.Catalog.CATEGORIES or {}
-  for i, c in ipairs(cats) do idx[c] = i end
-  return idx
-end
-
 -- Compute(state, catalog) runs Scoring:MarkRecommended(catalog, state) (mutates
 -- entry.recommended) and returns { rows = { {stat, current, max, diff} },
---   missing = Entry[], missingCount, percentOfMax, stale }
-function MaxCalc:Compute(state, catalog)
+--   percentOfMax, stale }
+-- With `picks` ({[slot]=buffId|false}) the chosen entries are those whose buff id is
+-- picked (ACTIVE or CAN_ADD, not burst), grouped by the entry's current excl (the
+-- slot key is ignored, so a rebuild that moved a buff still works). If two picked
+-- entries share a group the higher Score wins (tie: lower id). When the pick is not
+-- up but another buff of its group is ACTIVE, the slot counts as filled by that buff
+-- (max for that slot = current).
+function MaxCalc:Compute(state, catalog, picks)
   local reported = state and state.stats or {}
   catalog = catalog or {}
   ns.Scoring:MarkRecommended(catalog, state)
+  local pickedId
+  if picks then
+    pickedId = {}
+    for _, id in pairs(picks) do
+      if id then pickedId[id] = true end
+    end
+  end
   local all, chosen, chosenGroup = {}, {}, {}
+  local best = {}
   for key, list in pairs(catalog) do
     if key ~= "order" and type(list) == "table" then
       for _, e in ipairs(list) do
         all[#all + 1] = e
-        if e.recommended and not e.burst and e.status ~= "UNAVAILABLE" then
+        if pickedId then
+          if pickedId[e.id] and not e.burst and (e.status == "ACTIVE" or e.status == "CAN_ADD") then
+            local g = groupKey(e)
+            local cur = best[g]
+            if not cur then
+              best[g] = { e = e, score = ns.Scoring:Score(e.fx or {}, state) }
+            else
+              local sc = ns.Scoring:Score(e.fx or {}, state)
+              if sc > cur.score or (sc == cur.score and (e.id or 0) < (cur.e.id or 0)) then
+                best[g] = { e = e, score = sc }
+              end
+            end
+          end
+        elseif e.recommended and not e.burst and e.status ~= "UNAVAILABLE" then
           chosen[#chosen + 1] = e
           chosenGroup[groupKey(e)] = true
         end
       end
     end
   end
-  -- An active lower rank (status CAN_ADD, activeFx set: an upgrade) is active too.
+  -- A slot whose picked buff is not up while another buff of the slot is: the slot
+  -- is filled by that buff as it is (its active rank), so max = current there.
+  if pickedId then
+    for _, e in ipairs(all) do
+      local b = best[groupKey(e)]
+      if b and b.e.status ~= "ACTIVE" and e.status == "ACTIVE" and not e.burst and e.excl
+        and (not b.kept or (e.id or 0) < (b.kept.id or 0)) then
+        b.e, b.kept = { id = e.id, excl = e.excl, fx = e.activeFx or e.fx }, e
+      end
+    end
+  end
+  for g, b in pairs(best) do
+    chosen[#chosen + 1] = b.e
+    chosenGroup[g] = true
+  end
+  -- Safety net: a group's chosen fx never scores below what is already up in it (an
+  -- active rank above the chosen one would otherwise push max below current).
+  for i, c in ipairs(chosen) do
+    local g = groupKey(c)
+    local cs, better = ns.Scoring:Score(c.fx or {}, state), nil
+    for _, e in ipairs(all) do
+      if not e.burst and groupKey(e) == g and (e.status == "ACTIVE" or e.activeFx ~= nil) then
+        local afx = e.activeFx or e.fx or {}
+        local s = ns.Scoring:Score(afx, state)
+        if s > cs then better, cs = afx, s end
+      end
+    end
+    if better then chosen[i] = { id = c.id, excl = c.excl, fx = better } end
+  end
+  -- An active lower rank (status ACTIVE with upgrade, activeFx set) counts with its
+  -- activeFx; the chosen entry's fx is the best rank.
   -- Only active non-burst buffs whose group has a chosen entry are removed from
   -- the baseline. Active burst buffs and active buffs nobody would pick (score 0
   -- for this spec) stay in current AND max, so max is never below current.
@@ -155,23 +205,8 @@ function MaxCalc:Compute(state, catalog)
     rows[#rows + 1] = { stat = k, current = rc, max = rm, diff = round(rm - rc, k) }
   end
 
-  local missing = {}
-  for _, e in ipairs(chosen) do
-    if e.status == "CAN_ADD" then missing[#missing + 1] = e end
-  end
-  local cidx = categoryIndex()
-  table.sort(missing, function(a, b)
-    local ca, cb = cidx[a.cat] or 999, cidx[b.cat] or 999
-    if ca ~= cb then return ca < cb end
-    local na, nb = a.name or "", b.name or ""
-    if na ~= nb then return na < nb end
-    return (a.id or 0) < (b.id or 0)
-  end)
-
   return {
     rows = rows,
-    missing = missing,
-    missingCount = #missing,
     percentOfMax = n > 0 and (sum / n * 100) or 100,
     stale = state and state.stale or false,
   }

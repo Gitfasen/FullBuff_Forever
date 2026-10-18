@@ -139,3 +139,49 @@ def test_legacy_true_pin_upgraded_with_coords(addon):
     a.run("ns.CharDB.pins['2:1'] = true; ns.Pins:Restore()")
     assert keys(a) == ["2:1"]
     assert a.eval("ns.CharDB.pins['2:1'].mapID") == 1429
+
+
+def test_add_opens_map_on_the_pins_map(addon):
+    a = boot(addon)
+    assert a.eval("WorldMapFrame:IsShown()") is False
+    a.run("ns.Pins:Add(1, 3)")
+    assert a.eval("WorldMapFrame:IsShown()") is True
+    assert a.eval("__map.mapID") == 1411 and a.eval("__map.shows") == 1
+    a.run("ns.Pins:Add(2, 1)")  # already open: only the map changes
+    assert a.eval("__map.mapID") == 1429 and a.eval("__map.shows") == 1
+
+
+def test_refused_add_does_not_open_map(addon):
+    a = boot(addon)
+    a.run("ns.Pins:Add(1, 2)")
+    assert a.eval("WorldMapFrame:IsShown()") is False and a.eval("__map.mapID") is None
+
+
+def test_pin_all_focuses_first_added_pin(addon):
+    a = boot(addon)
+    assert a.eval("ns.Pins:AddAll(1)") == 2
+    assert list(a.eval("__map.mapIDs").values()) == [1429]  # source 1 is first; source 2 has no coords
+    assert a.eval("WorldMapFrame:IsShown()") is True
+
+
+def test_no_map_in_combat_but_pins_added(addon):
+    a = boot(addon)
+    a.run("InCombatLockdown = function() return true end")
+    a.run("ns.Pins:Add(1, 1)")
+    assert a.eval("ns.Pins:AddAll(1)") == 2
+    assert a.eval("WorldMapFrame:IsShown()") is False and a.eval("__map.shows") == 0
+    assert keys(a) == ["1:1", "1:3"]
+
+
+def test_detail_card_buttons_focus_map(addon):
+    a = boot(addon)
+    a.run("ns.UI.OpenDetail(1)")
+    a.run("local b = ns.Detail:GetButtons().pinAll; b:GetScript('OnClick')(b)")
+    assert a.eval("__map.mapID") == 1429 and a.errors() == []
+
+
+def test_map_error_is_swallowed(addon):
+    a = boot(addon)
+    a.run("WorldMapFrame.SetMapID = function() error('boom') end")
+    assert a.eval("ns.Pins:Add(1, 1)") is True
+    assert a.errors() == []

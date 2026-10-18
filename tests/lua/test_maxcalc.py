@@ -58,7 +58,12 @@ __ns.__cat = cat
     for r in res["rows"].values():
         rows[r["stat"]] = (r["current"], r["max"], r["diff"])
         order.append(r["stat"])
-    missing = [m["id"] for m in res["missing"].values()]
+    # chosen-but-not-active entries (MaxCalc marks entry.recommended), sorted by id
+    missing = sorted(a.eval("""(function() local out = {}
+      for k, list in pairs(__ns.__cat) do if k ~= 'order' then for _, e in ipairs(list) do
+        if e.recommended and not e.burst and e.status == 'CAN_ADD' then out[#out + 1] = e.id end
+      end end end
+      return out end)()""").values())
     return a, res, rows, order, missing
 
 
@@ -71,7 +76,7 @@ def test_no_active_buffs_max_equals_current_plus_best(addon):
     # food group: A {STR=10} (score 20) beats B {STR=5}; elixir C {AGI=20}.
     # STR 100 -> 110 (+10); AGI 50 -> 70 (+20)
     # AP 200 + 10*2 = 220; CRIT 5 + 20*0.04 = 5.8; ARMOR 1000 + 20*2 = 1040
-    # STA/HP unchanged. missing sorted by category order: ELIXIR (C) before FOOD (A)
+    # STA/HP unchanged. missing: A and C
     _, res, rows, order, missing = compute(addon, make_state(), """
       E(1, "FOOD", "Food A", "food", {STR=10}),
       E(2, "FOOD", "Food B", "food", {STR=5}),
@@ -85,7 +90,7 @@ def test_no_active_buffs_max_equals_current_plus_best(addon):
     assert rows["ARMOR"] == (1000, 1040, 40)
     assert rows["HP"] == (800, 800, 0)
     assert rows["CRIT"] == (5.0, 5.8, pytest.approx(0.8))
-    assert missing == [3, 1] and res["missingCount"] == 2
+    assert missing == [1, 3]
     # mean(100/110, 50/70, 1, 200/220, 1000/1040, 1, 5/5.8) * 100
     assert res["percentOfMax"] == pytest.approx(
         pct((100, 110), (50, 70), (80, 80), (200, 220), (1000, 1040), (800, 800), (5, 5.8)))
@@ -101,7 +106,7 @@ def test_active_flat_subtracted_not_double_counted(addon):
     """)
     assert rows["STR"] == (110, 110, 0)
     assert rows["AP"] == (220, 220, 0)
-    assert missing == [] and res["missingCount"] == 0
+    assert missing == []
     assert res["percentOfMax"] == pytest.approx(100)
 
 
@@ -122,7 +127,7 @@ def test_kings_percent_applied_to_primary(addon):
     assert rows["CRIT"] == (5.0, 5.2, pytest.approx(0.2))
     assert rows["ARMOR"] == (1000, 1010, 10)
     assert rows["HP"] == (800, 880, 80)
-    assert missing == [20, 1]
+    assert missing == [1, 20]
     # Kings ACTIVE: stats STR 110, AGI 55, STA 88 (and derived AP 220, CRIT 5.2, ARMOR 1010, HP 880)
     # base STR = 110/1.1 - 0 = 100 -> max (100+10)*1.1 = 121 (+11) -> AP 220 + 22 = 242
     st = make_state({"STR": 110, "AGI": 55, "STA": 88, "AP": 220, "CRIT": 5.2, "ARMOR": 1010,
@@ -154,7 +159,7 @@ def test_same_group_counts_once(addon):
       E(2, "FOOD", "Food B", "food", {AP=30}),
     """)
     assert rows["AP"] == (200, 240, 40)
-    assert missing == [1] and res["missingCount"] == 1
+    assert missing == [1]
 
 
 def test_camp_buff_and_class_buff_share_group(addon):
@@ -201,7 +206,7 @@ def test_armor_pct_and_derived_armor(addon):
       E(52, "ELIXIR", "Agility", "agi", {AGI=10}),
     """)
     assert rows["ARMOR"] == (1100, 1232, 132)
-    assert missing == [52, 51]
+    assert missing == [51, 52]
 
 
 def test_burst_ignored(addon):
@@ -283,7 +288,8 @@ def test_percent_skips_zero_max_and_empty_is_100(addon):
     res = a.eval("ns.MaxCalc:Compute(__ns.__st, {order={}})")
     r = res["rows"][1]
     assert (r["stat"], r["current"], r["max"], r["diff"]) == ("HIT", 0, 0, 0)
-    assert res["percentOfMax"] == 100 and res["missingCount"] == 0
+    assert res["percentOfMax"] == 100
+    assert res["missing"] is None and res["missingCount"] is None  # removed outputs
 
 
 def test_active_lower_rank_subtracts_its_own_fx_and_counts_as_missing(addon):
@@ -324,3 +330,146 @@ def test_unreported_mp5_active_weaker_replaced_by_best(addon):
       E(3, "CLASS", "Other", "other", {MP5=5}, "ACTIVE", true),
     """)
     assert rows["MP5"] == (25, 35)
+
+
+# --- picks (buff sets) ---
+def compute_picks(addon, entries, picks):
+    a = addon()
+    a.run(WEIGHTS)
+    a.run("__ns.__st = %s" % make_state(active=(1,)))
+    a.run(ENTRY_FN + """
+local list = {%s}
+local cat = {order = {}}
+for _, e in ipairs(list) do
+  if not cat[e.cat] then cat[e.cat] = {}; table.insert(cat.order, e.cat) end
+  table.insert(cat[e.cat], e)
+end
+__ns.__res = ns.MaxCalc:Compute(__ns.__st, cat, %s)
+""" % (entries, picks))
+    res = a.eval("__ns.__res")
+    return {r["stat"]: (r["current"], r["max"]) for r in res["rows"].values()}, res
+
+
+def test_picks_override_recommendation(addon):
+    # A {STR=10} is recommended; picking B {STR=5}: STR 100 -> 105
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{food=2}")
+    assert rows["STR"] == (100, 105)
+
+
+def test_pick_not_used_keeps_active_buff(addon):
+    # active A {STR=10} is inside the 100; group set to false -> A stays, max == current
+    rows, res = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{food=false}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_unavailable_pick_ignored(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "UNAVAILABLE"),""", "{food=1}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_burst_pick_ignored(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "CAN_ADD", true),""", "{food=1}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_empty_picks_max_equals_current(addon):
+    rows, res = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),
+      E(2, "ELIXIR", "C", "elixir", {AGI=20}),""", "{}")
+    assert all(c == m for c, m in rows.values())
+
+
+def test_pick_matched_by_id_not_slot_key(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),""", "{oldslot=1}")
+    assert rows["STR"] == (100, 110)
+
+
+def test_two_picks_in_one_group_best_counts(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{s1=2, s2=1}")
+    assert rows["STR"] == (100, 110)
+
+
+def test_picked_active_entry_max_equals_current(addon):
+    rows, res = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),""", "{food=1}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_picked_upgrade_replaces_active_lower_rank(addon):
+    # lower rank active {STR=4} (in the 100); rank up fx {STR=10}: 100 - 4 + 10
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="FOOD", name="A", excl="food", fx={STR=10}, activeFx={STR=4}, status="CAN_ADD"},""", "{food=1}")
+    assert rows["STR"] == (100, 106)
+
+
+def test_active_in_group_of_other_pick_is_kept_when_better(addon):
+    # active A {STR=10} is inside the 100; picking the weaker B {STR=5} keeps A (fix A):
+    # max for the slot is the better of the pick and the buff already up
+    rows, _ = compute_picks(addon, """
+      E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "FOOD", "B", "food", {STR=5}),""", "{food=2}")
+    assert rows["STR"] == (100, 100)
+
+
+# --- fix A: an active lower rank stays ACTIVE with upgrade = true ---
+def test_active_upgrade_entry_uses_best_rank_minus_active(addon):
+    # recommended (no picks): STA 80 includes rank STA 20 -> 80 - 20 + 54 = 114
+    _, res, rows, _, _ = compute(addon, make_state(), """
+      (function() local e = E(7, "CLASS", "Fortitude", "fort", {STA=54}, "ACTIVE")
+        e.activeFx = {STA=20}; e.upgrade = true; return e end)(),
+    """)
+    assert rows["STA"][:2] == (80, 114)
+
+
+def test_picked_active_upgrade_max_is_current_minus_active_plus_best(addon):
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="FOOD", name="A", excl="food", fx={STR=10}, activeFx={STR=4}, status="ACTIVE", upgrade=true},""",
+                            "{food=1}")
+    assert rows["STR"] == (100, 106)
+
+
+# --- fix A: a slot filled by another active buff counts as satisfied (max = current) ---
+@pytest.mark.parametrize("picked_str", [5, 10, 15])
+def test_pick_not_up_other_active_member_fills_slot(addon, picked_str):
+    # active A {STR=10} in the 100; pick B (weaker, equal or stronger): slot filled by A
+    rows, _ = compute_picks(addon, """
+      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "CAMPING", "B", "food", {STR=%d}),""" % picked_str, "{food=2}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_active_member_with_upgrade_fills_slot_at_its_rank(addon):
+    # A up at a lower rank (activeFx STR 4, best 10); pick B: slot filled by A as it is
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="CLASS", name="A", excl="food", fx={STR=10}, activeFx={STR=4}, status="ACTIVE", upgrade=true},
+      E(2, "CAMPING", "B", "food", {STR=15}),""", "{food=2}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_unavailable_pick_with_active_member_keeps_it(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "CLASS", "B", "food", {STR=15}, "UNAVAILABLE"),""", "{food=2}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_active_fx_better_than_chosen_fx_max_not_below_current(addon):
+    # safety net: an active rank above the chosen fx (STA 42 up, entry fx STA 26) must not
+    # push max below current: the group's chosen fx is the better of the two
+    _, res, rows, _, _ = compute(addon, make_state(), """
+      (function() local e = E(7, "CLASS", "Fortitude", "fort", {STA=26}, "ACTIVE")
+        e.activeFx = {STA=42}; return e end)(),
+    """)
+    assert rows["STA"][:2] == (80, 80) and rows["HP"][:2] == (800, 800)
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="CLASS", name="F", excl="fort", fx={STR=4}, activeFx={STR=10}, status="ACTIVE"},""", "{fort=1}")
+    assert rows["STR"] == (100, 100)

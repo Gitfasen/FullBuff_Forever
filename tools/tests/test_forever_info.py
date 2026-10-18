@@ -109,3 +109,56 @@ def test_unresolved_exclusive_reported():
     result = unresolved_exclusives({1: wisdom}, camps())
     assert ("Boosted Mana Regeneration", "Blessing of Wisdom") not in result
     assert ("Boosted Attack Power", "Blessing of Might") in result
+
+
+# --- fix A: camp buffs by level bands ---
+STATS_FX = dict(AGI=13, ARMOR=308, INT=13, SPI=13, STA=13, STR=13)
+
+
+def test_parse_camping_keeps_bands():
+    lute = next(c for c in camps() if c.object_name == "Enchanted Lute")
+    assert [b[0] for b in lute.bands] == [1, 10, 20, 60]
+    assert "308 Armor" in lute.bands[-1][1]
+
+
+def test_apply_camping_builds_level_band_ranks():
+    motw = buff(1, "Mark of the Wild", "CLASS", excl="STATS", cls="DRUID")
+    lute = buff(1230653, "Boosted Stats")
+    lute.fx, lute.lvl = dict(STATS_FX), 0
+    bowl = buff(1230098, "Boosted Stats")
+    bowl.fx, bowl.lvl = {"STAT_PCT": 8}, 0
+    apply_camping({1: motw, 1230653: lute, 1230098: bowl}, [], camps())
+    assert [(r.spell, r.lvl) for r in lute.ranks] == [(1230653, 1), (1230653, 10), (1230653, 20),
+                                                       (1230653, 60)]
+    low, top = lute.ranks[0], lute.ranks[-1]
+    assert low.fx == {"ARMOR": 28}
+    assert lute.ranks[2].fx == dict(AGI=4, ARMOR=114, INT=4, SPI=4, STA=4, STR=4)
+    assert top.fx == STATS_FX
+    assert lute.lvl == 1 and lute.fx == STATS_FX
+    # one band only: no ranks, unchanged
+    assert bowl.ranks is None and bowl.lvl == 0
+    # idempotent
+    apply_camping({1: motw, 1230653: lute, 1230098: bowl}, [], camps())
+    assert len(lute.ranks) == 4
+
+
+def test_band_ranks_parse_by_phrase_and_ignore_cooldown():
+    from tools.sources.forever_info import band_ranks, parse_band
+    lute = next(c for c in camps() if c.object_name == "Enchanted Lute")
+    assert parse_band(lute.bands[0][1]) == {"ARMOR": 28}  # "cooldown of 1 hrs" is not a stat
+    assert parse_band(lute.bands[1][1]) == dict(ARMOR=71, STR=2, AGI=2, STA=2, INT=2, SPI=2)
+    assert parse_band(lute.bands[-1][1])["ARMOR"] == 308  # resistances ignored
+    ranks = band_ranks(7, STATS_FX, lute.bands)
+    assert ranks[0].fx == {"ARMOR": 28}
+    assert ranks[1].fx == dict(ARMOR=71, STR=2, AGI=2, STA=2, INT=2, SPI=2)
+    assert ranks[-1].fx == STATS_FX
+
+
+def test_band_phrases_other_stats():
+    from tools.sources.forever_info import parse_band
+    assert parse_band("regenerate 10 Mana every 5 sec ... cooldown of 1 hrs.") == {"MP5": 10}
+    assert parse_band("gain 12 increased melee Attack Power, x") == {"AP": 12}
+    assert parse_band("gain 6 increased Strength, x. cooldown of 1 hrs.") == {"STR": 6}
+    assert parse_band("gain 8% increased stats, x") == {"STAT_PCT": 8}
+    assert parse_band("gain 2% increased critical strike chance with all") == {"CRIT": 2,
+                                                                              "SPELL_CRIT": 2}

@@ -86,8 +86,39 @@ newFrame = function(frameType, name, parent)
   frames[#frames + 1] = f
   return f
 end
+-- DropdownButton + WowStyle1DropdownTemplate: SetupMenu records the generator.
+-- __dropdown.available = false makes CreateFrame fail like an unknown template.
+-- dd:__entries() runs the generator with a recording root -> { {text=, selected=, data=,
+-- select=fn}, ... }; dd:__select(i) invokes entry i's setSelected; GetText() is the
+-- selected entry's text (what the real template shows).
+__dropdown = { available = true }
+local function dropdownEntries(dd)
+  local list = {}
+  local root = {}
+  function root:CreateRadio(text, isSelected, setSelected, data)
+    list[#list + 1] = { text = text, selected = isSelected(data) and true or false, data = data,
+                        select = function() return setSelected(data) end }
+  end
+  if dd.__generator then dd.__generator(dd, root) end
+  return list
+end
+local function mockDropdown(f)
+  function f:SetupMenu(gen) self.__generator = gen end
+  function f:GenerateMenu() end
+  function f:__entries() return dropdownEntries(self) end
+  function f:__select(i) return dropdownEntries(self)[i].select() end
+  function f:GetText()
+    for _, e in ipairs(dropdownEntries(self)) do if e.selected then return e.text end end
+    return nil
+  end
+  return f
+end
 function CreateFrame(frameType, name, parent, template)
+  if frameType == "DropdownButton" and not __dropdown.available then
+    error("CreateFrame: unknown template " .. tostring(template))
+  end
   local f = newFrame(frameType, name, parent)
+  if frameType == "DropdownButton" then mockDropdown(f) end
   if name then _G[name] = f end
   return f
 end
@@ -100,6 +131,12 @@ GameTooltip.SetOwner = function(self, owner) self.__owner = owner; self.__lines 
 GameTooltip.GetOwner = function(self) return self.__owner end
 GameTooltip.AddLine = function(self, t) self.__lines[#self.__lines + 1] = tostring(t) end
 GameTooltip.AddDoubleLine = function(self, a, b) self.__lines[#self.__lines + 1] = tostring(a) .. " | " .. tostring(b) end
+-- World map: Show/SetMapID are recorded (__map.shown_calls via ShowUIPanel, __map.mapID).
+__map = { shows = 0, mapIDs = {} }
+WorldMapFrame = newFrame("Frame", "WorldMapFrame")
+WorldMapFrame.__shown = false
+function WorldMapFrame:SetMapID(id) __map.mapID = id; __map.mapIDs[#__map.mapIDs + 1] = id end
+function ShowUIPanel(f) __map.shows = __map.shows + 1; f:Show() end
 GetScreenWidth = function() return 1920 end
 GetScreenHeight = function() return 1080 end
 GetCursorPosition = function() return 0, 0 end
@@ -255,3 +292,19 @@ Settings = {
   RegisterAddOnCategory = function(cat) cat.registered = true end,
   OpenToCategory = function(id) __settings.opened[#__settings.opened + 1] = id end,
 }
+
+-- Static popups: StaticPopup_Show records into __popups.shown; __accept_popup()
+-- runs OnAccept(frame, data) of the last shown dialog (tests only).
+StaticPopupDialogs = {}
+__popups = { shown = {} }
+function StaticPopup_Show(which, arg1, arg2, data)
+  local dlg = StaticPopupDialogs[which]
+  if not dlg then return nil end
+  __popups.shown[#__popups.shown + 1] = { which = which, arg1 = arg1, arg2 = arg2, data = data }
+  return newFrame("Frame", "StaticPopup" .. #__popups.shown)
+end
+function __accept_popup()
+  local p = __popups.shown[#__popups.shown]
+  local dlg = p and StaticPopupDialogs[p.which]
+  if dlg and dlg.OnAccept then dlg.OnAccept(newFrame("Frame"), p.data) end
+end

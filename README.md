@@ -33,7 +33,11 @@ In-game checks that cannot be automated are listed in `docs/manual-test.md`.
 - `/fullbuff options` opens the settings panel (right-clicking the launcher icon or the addon compartment entry does the same)
 - `/fullbuff lang en|uk` switches the interface language
 - `/fullbuff debug` lists unknown auras and the stale state
-- `/fullbuff reset` resets the launcher position and collapsed sections
+- `/fullbuff reset` resets the launcher position
+
+## Buff sets
+
+A set is a named list of buffs for one situation (for example a raid set and a solo set). Each conflict slot (Intellect, Stamina, flask, food and so on) holds at most one pick, and potions and trinkets are tracked by how many you carry. The popover shows only the active set, with buffs you already have first. Open the settings panel, Sets, to create, copy, rename and delete sets, pick one option per slot (the raid star marks the recommended one, the green tick the one already on you) and choose which burst items to track. A set can be bound to a talent specialization, and then it activates automatically when you change talents or specialization; the set button in the popover header cycles through the sets by hand. The set maximum counts only the picks of the active set.
 
 ## How the maximum is counted
 
@@ -42,7 +46,6 @@ The maximum takes the best buff of every stacking group. Consumables follow a va
 ## Known limitations
 
 - The stacking model is an approximation: Forever-specific stacking rules that differ from it need a curated `excl_merge` entry.
-- Category ordering in the popover is fixed; user-defined ordering is not implemented yet.
 - Mana and health regeneration (MP5, HP5) from gear are not reported by the client; only known active buffs count towards the current value.
 
 ## Data sources

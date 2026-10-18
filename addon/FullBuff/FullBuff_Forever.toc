@@ -22,14 +22,19 @@ Core\SavedVars.lua
 Data\Buffs.lua
 Data\Sources.lua
 Data\Weights.lua
+Data\Slots.lua
+Engine\Bags.lua
 Engine\PlayerState.lua
 Engine\Catalog.lua
 Engine\Scoring.lua
 Engine\MaxCalc.lua
+Engine\Sets.lua
+Engine\SetTracker.lua
 
 Systems\MapPins.lua
 
 UI\ViewModel.lua
+UI\SetDropdown.lua
 UI\Launcher.lua
 UI\Popover.lua
 UI\DetailCard.lua

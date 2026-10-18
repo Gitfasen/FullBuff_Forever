@@ -26,22 +26,40 @@ S = "{class='WARRIOR', level=30, active={}}"
 
 
 def test_rank_chosen_by_target_level(addon):
-    a = build(addon, S)
-    e = a.eval("ns.Catalog:Build(ns.__s).CLASS[4]")  # Zeal
+    # another class's buff: ranks up to 10 levels above the player (a higher caster)
+    a = build(addon, "{class='PALADIN', level=30, active={}}")
+    e = a.eval("(function() for _, x in ipairs(ns.Catalog:Build(ns.__s).CLASS) do if x.id == 10 then return x end end end)()")
     assert e["name"] == "Zeal" and e["rankSpell"] == 14
     assert e["fx"]["STR"] == 30 and e["status"] == "CAN_ADD"
 
 
+def test_own_class_rank_by_player_level(addon):
+    a = build(addon, S)
+    e = a.eval("ns.Catalog:Build(ns.__s).CLASS[4]")  # Zeal, own class: no slack
+    assert e["name"] == "Zeal" and e["rankSpell"] == 13
+    assert e["fx"]["STR"] == 20 and e["status"] == "CAN_ADD"
+
+
+GET50 = "(function() for _, x in ipairs(ns.Catalog:Build(ns.__s).CLASS) do if x.id == 50 then return x end end end)()"
+
+
 def test_rank_none_allowed_unavailable_lowest(addon):
-    a = build(addon, "{class='WARRIOR', level=15, active={}}")
-    e = a.eval("(function() for _, x in ipairs(ns.Catalog:Build(ns.__s).CLASS) do if x.id == 50 then return x end end end)()")
+    a = build(addon, "{class='PALADIN', level=15, active={}}")
+    e = a.eval(GET50)
     assert e["status"] == "UNAVAILABLE" and e["rankSpell"] == 51 and e["fx"]["STA"] == 1
     a.run("ns.__s.level = 20")
-    e = a.eval("(function() for _, x in ipairs(ns.Catalog:Build(ns.__s).CLASS) do if x.id == 50 then return x end end end)()")
+    e = a.eval(GET50)
     assert e["status"] == "CAN_ADD" and e["rankSpell"] == 51
     a.run("ns.__s.level = 19")
-    e = a.eval("(function() for _, x in ipairs(ns.Catalog:Build(ns.__s).CLASS) do if x.id == 50 then return x end end end)()")
-    assert e["status"] == "UNAVAILABLE"
+    assert a.eval(GET50)["status"] == "UNAVAILABLE"
+
+
+def test_own_class_rank_none_allowed_below_its_level(addon):
+    a = build(addon, "{class='WARRIOR', level=29, active={}}")
+    e = a.eval(GET50)
+    assert e["status"] == "UNAVAILABLE" and e["rankSpell"] == 51
+    a.run("ns.__s.level = 30")
+    assert a.eval(GET50)["status"] == "CAN_ADD"
 
 
 def test_item_above_level_unavailable(addon):
@@ -138,16 +156,80 @@ def fort(addon, aura, level=60):
 def test_active_lower_rank_is_upgrade_with_active_rank_fx(addon):
     # rank 3 (STA 20) active, rank 6 (STA 54) available at 60 -> upgrade available
     _, e = fort(addon, 1245)
-    assert e["status"] == "CAN_ADD" and e["rankSpell"] == 10938
+    assert e["status"] == "ACTIVE" and e["upgrade"] is True and e["rankSpell"] == 10938
     assert e["fx"]["STA"] == 54 and e["activeFx"]["STA"] == 20
 
 
 def test_active_top_rank_stays_active(addon):
     _, e = fort(addon, 10938)
-    assert e["status"] == "ACTIVE" and e["activeFx"]["STA"] == 54
+    assert e["status"] == "ACTIVE" and e["activeFx"]["STA"] == 54 and e["upgrade"] is None
 
 
 def test_active_rank_at_best_for_level_stays_active(addon):
     # level 30: best rank allowed is rank 4 (lvl 36 - 10 slack); rank 4 active -> ACTIVE
     _, e = fort(addon, 2791, level=30)
     assert e["status"] == "ACTIVE" and e["activeFx"]["STA"] == 32
+
+
+# --- fix A: own-class ranks, upgrades, camp bands ---
+FORT_A = """
+ns.Buffs = {
+  [10938] = {name="Power Word: Fortitude", cat="CLASS", cls="PRIEST", fx={STA=70}, lvl=1, excl="STA", ranks={
+    {spell=1243, lvl=1, fx={STA=4}}, {spell=1244, lvl=12, fx={STA=10}}, {spell=1245, lvl=24, fx={STA=26}},
+    {spell=2791, lvl=36, fx={STA=42}}, {spell=10937, lvl=48, fx={STA=56}}, {spell=10938, lvl=60, fx={STA=70}}}},
+  [900] = {name="Camp", cat="CAMPING", fx={ARMOR=308, STA=13}, lvl=1, excl="STATS", ranks={
+    {spell=900, lvl=1, fx={ARMOR=28, STA=1}}, {spell=900, lvl=10, fx={ARMOR=71, STA=2}},
+    {spell=900, lvl=20, fx={ARMOR=114, STA=4}}, {spell=900, lvl=60, fx={ARMOR=308, STA=13}}}},
+}
+"""
+
+
+def entry(a, cat, id_):
+    return a.eval("(function() for _, x in ipairs(ns.Catalog:Build(ns.__s)[%r] or {}) do "
+                  "if x.id == %d then return x end end end)()" % (cat, id_))
+
+
+def test_own_class_rank_has_no_level_slack(addon):
+    a = build(addon, "{class='PRIEST', level=30, active={[10938]=true}, activeAura={[10938]=1245}}", FORT_A)
+    e = entry(a, "CLASS", 10938)
+    assert e["status"] == "ACTIVE" and e["rankSpell"] == 1245
+    assert e["upgrade"] is None and e["fx"]["STA"] == 26
+
+
+def test_other_class_rank_keeps_slack_and_flags_upgrade(addon):
+    # a mage cannot cast it: a higher priest may give rank 2791 (lvl 36 <= 30 + 10)
+    a = build(addon, "{class='MAGE', level=30, active={[10938]=true}, activeAura={[10938]=1245}}", FORT_A)
+    e = entry(a, "CLASS", 10938)
+    assert e["status"] == "ACTIVE" and e["upgrade"] is True
+    assert e["rankSpell"] == 2791 and e["fx"]["STA"] == 42 and e["activeFx"]["STA"] == 26
+
+
+def test_own_class_lower_rank_active_is_upgrade(addon):
+    a = build(addon, "{class='PRIEST', level=30, active={[10938]=true}, activeAura={[10938]=1244}}", FORT_A)
+    e = entry(a, "CLASS", 10938)
+    assert e["status"] == "ACTIVE" and e["upgrade"] is True and e["rankSpell"] == 1245
+    assert e["activeFx"]["STA"] == 10
+
+
+def test_camp_rank_by_level_band(addon):
+    a = build(addon, "{class='WARRIOR', level=10, active={}}", FORT_A)
+    e = entry(a, "CAMPING", 900)
+    assert e["status"] == "CAN_ADD" and e["fx"]["ARMOR"] == 71 and e["fx"]["STA"] == 2
+    a.run("ns.__s.level = 19")
+    assert entry(a, "CAMPING", 900)["fx"]["ARMOR"] == 71
+
+
+def test_camp_active_same_spell_resolves_by_level(addon):
+    a = build(addon, "{class='WARRIOR', level=25, active={[900]=true}, activeAura={[900]=900}}", FORT_A)
+    e = entry(a, "CAMPING", 900)
+    assert e["status"] == "ACTIVE" and e["upgrade"] is None
+    assert e["activeFx"]["ARMOR"] == 114 and e["fx"]["ARMOR"] == 114
+
+
+def test_own_class_active_rank_above_level_is_the_entry_fx(addon):
+    # level-30 priest buffed by a higher priest with rank 2791 (lvl 36): the best castable
+    # rank is 1245 (STA 26) but 2791 (STA 42) is up -> fx/rankSpell are the active rank
+    a = build(addon, "{class='PRIEST', level=30, active={[10938]=true}, activeAura={[10938]=2791}}", FORT_A)
+    e = entry(a, "CLASS", 10938)
+    assert e["status"] == "ACTIVE" and e["upgrade"] is None
+    assert e["rankSpell"] == 2791 and e["fx"]["STA"] == 42 and e["activeFx"]["STA"] == 42

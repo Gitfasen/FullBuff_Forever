@@ -1,6 +1,7 @@
 local _, ns = ...
 
--- Popover: stat table + collapsible buff sections, anchored to the launcher.
+-- Popover: set button + stats (current -> max with the active set) + the set's buffs
+-- + the burst block, anchored to the launcher.
 ns.UI = ns.UI or {}
 local Popover = {}
 ns.UI.Popover = Popover
@@ -9,10 +10,10 @@ ns.UI.Toggle = function() Popover:Toggle() end
 local FRAME_NAME = "FullBuffPopover"
 local WIDTH, HEIGHT = 340, 440
 local STAT_H, SECTION_H, ITEM_H = 16, 22, 32
+local RED = "|cffff2020"
 
-local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:0|t" -- raid-target star: exists in every client
-local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t" -- ready-check tick: already on the character
-local frame, scroll, content, staleText, titleText, headerText, onlyMissing, onlyMissingLabel
+local CHECK = ns.UI.MARK_CHECK
+local frame, scroll, content, staleText, titleText, headerText, setButton, setDropdown
 local pool, used = {}, 0
 
 local function db()
@@ -22,9 +23,8 @@ end
 
 local COLORS = {
   ACTIVE = { 0.25, 1, 0.25 }, -- green: already have it
-  CAN_ADD = { 1, 1, 1 },
+  MISSING = { 1, 1, 1 },
   UNAVAILABLE = { 0.5, 0.5, 0.5 },
-  RECOMMENDED = { 1, 0.82, 0 },
 }
 
 local function newLine()
@@ -43,22 +43,18 @@ local function newLine()
   b.c2 = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   b.c3 = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   b:SetScript("OnEnter", function(self)
-    if self.fbKind ~= "item" then return end
+    if self.fbKind ~= "item" and self.fbKind ~= "burst" then return end
+    if not self.fbName then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(self.fbName or "")
-    if self.fbRecommended then GameTooltip:AddLine(ns.L.RECOMMENDED, 1, 0.82, 0) end
     GameTooltip:Show()
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   b:SetScript("OnClick", function(self)
-    if self.fbKind == "section" then
-      local d = db()
-      d.collapsed = d.collapsed or {}
-      d.collapsed[self.fbCat] = (not d.collapsed[self.fbCat]) or nil
-      ns.ViewModel:Invalidate()
-      Popover:Refresh()
-    elseif self.fbKind == "item" then
+    if (self.fbKind == "item" or self.fbKind == "burst") and self.fbId then
       ns.UI.OpenDetail(self.fbId)
+    elseif self.fbKind == "options" then
+      if ns.UI.OpenOptions then ns.UI.OpenOptions() end
     end
   end)
   return b
@@ -72,7 +68,7 @@ local function takeLine(y, kind, height)
     b = newLine()
     pool[used] = b
   end
-  b.fbKind, b.fbId, b.fbCat, b.fbName, b.fbRecommended = kind, nil, nil, nil, nil
+  b.fbKind, b.fbId, b.fbStatus, b.fbName = kind, nil, nil, nil
   b:SetAlpha(1)
   b:SetHeight(height)
   b:ClearAllPoints()
@@ -111,8 +107,11 @@ function Popover:Refresh()
   local vm = ns.ViewModel:Get()
   local L = ns.L
   titleText:SetText(L.TITLE)
-  onlyMissingLabel:SetText(L.SHOW_ONLY_MISSING)
-  onlyMissing:SetChecked(db().onlyMissing and true or false)
+  if setDropdown then
+    ns.UI.SetDropdown.Refresh(setDropdown)
+  else
+    setButton:SetText(string.format("%s: %s", L.SET_LABEL, vm.header.setName or ""))
+  end
   -- one line under the title: the stale warning wins over the spec hint
   if vm.header.stale then
     staleText:SetText(L.STALE_AFTER_COMBAT)
@@ -144,43 +143,89 @@ function Popover:Refresh()
   end
   y = y + 8
 
-  for _, sec in ipairs(vm.sections) do
-    b, y = takeLine(y, "section", SECTION_H)
-    b.fbCat = sec.cat
+  if vm.empty then
+    b, y = takeLine(y, "empty", SECTION_H)
+    b.name:SetPoint("LEFT", 6, 0)
+    b.name:SetText(L.SET_EMPTY)
+    b, y = takeLine(y, "options", SECTION_H)
     b.bg:SetColorTexture(1, 1, 1, 0.08)
     b.name:SetPoint("LEFT", 6, 0)
-    b.name:SetText(string.format("%s %s (%d/%d)", sec.collapsed and "[+]" or "[-]", sec.title, sec.activeCount, sec.total))
-    if not sec.collapsed then
-      for _, it in ipairs(sec.items) do
-        b, y = takeLine(y, "item", ITEM_H)
-        b.fbId, b.fbName, b.fbRecommended = it.id, it.name, it.recommended
-        b.icon:SetTexture(it.icon)
-        b.icon:Show()
+    b.name:SetText(L.SET_OPEN_SETTINGS)
+  end
+
+  -- rows sharing a name (e.g. two "Well Fed") get their slot name in the sub-line
+  local nameCount = {}
+  for _, it in ipairs(vm.list) do nameCount[it.name] = (nameCount[it.name] or 0) + 1 end
+  for _, it in ipairs(vm.list) do
+    b, y = takeLine(y, "item", ITEM_H)
+    b.fbStatus = it.status
+    if it.status ~= "UNAVAILABLE" then b.fbId = it.buffId end
+    b.fbName = it.name
+    b.icon:SetTexture(it.icon)
+    b.icon:Show()
+    b.name:SetPoint("TOPLEFT", 34, -4)
+    b.name:SetPoint("TOPRIGHT", -4, -4)
+    b.sub:SetPoint("BOTTOMLEFT", 34, 4)
+    b.sub:SetPoint("BOTTOMRIGHT", -4, 4)
+    b.name:SetWordWrap(false)
+    b.sub:SetWordWrap(false)
+    local sub = it.valueText or ""
+    if it.status == "ACTIVE" then
+      b.name:SetText(CHECK .. " " .. it.name)
+    else
+      b.name:SetText(it.name)
+    end
+    if it.status == "UNAVAILABLE" then sub = L.SET_UNAVAILABLE end
+    local function append(text) sub = (sub ~= "" and (sub .. "  ·  ") or "") .. text end
+    if it.upgrade then append(L.RANK_UPGRADE) end
+    if nameCount[it.name] > 1 and it.slotName then
+      append(it.slotName)
+    end
+    if it.status == "MISSING" and (it.bagCount or 0) > 0 then
+      sub = sub .. "  " .. L.IN_BAGS:format(it.bagCount)
+    end
+    b.sub:SetText(sub)
+    local c = COLORS[it.status] or COLORS.MISSING
+    b.name:SetTextColor(c[1], c[2], c[3])
+  end
+
+  if #vm.burst > 0 then
+    b, y = takeLine(y, "section", SECTION_H)
+    b.bg:SetColorTexture(1, 1, 1, 0.08)
+    b.name:SetPoint("LEFT", 6, 0)
+    b.name:SetText(L.BURST_TITLE)
+    for _, it in ipairs(vm.burst) do
+      b, y = takeLine(y, "burst", ITEM_H)
+      b.fbName = it.name
+      b.icon:SetTexture(it.icon)
+      b.icon:Show()
+      b.name:SetWordWrap(false)
+      b.name:SetText(it.name)
+      if it.unavailable then
+        -- greyed, with the unavailable text; no bag count, no detail card
         b.name:SetPoint("TOPLEFT", 34, -4)
         b.name:SetPoint("TOPRIGHT", -4, -4)
         b.sub:SetPoint("BOTTOMLEFT", 34, 4)
         b.sub:SetPoint("BOTTOMRIGHT", -4, 4)
-        b.name:SetWordWrap(false)
         b.sub:SetWordWrap(false)
-        b:SetAlpha(1)
-        local mark = ""
-        if it.status == "ACTIVE" then
-          mark = CHECK .. " "
-        elseif it.recommended then
-          mark = STAR .. " "
-        end
-        b.name:SetText(mark .. it.name)
-        b.sub:SetText(it.valueText)
-        local c = COLORS[it.status] or COLORS.CAN_ADD
-        if it.status == "CAN_ADD" and it.recommended then c = COLORS.RECOMMENDED end
+        b.sub:SetText(L.SET_UNAVAILABLE)
+        local c = COLORS.UNAVAILABLE
         b.name:SetTextColor(c[1], c[2], c[3])
+      else
+        b.fbId = it.buffId
+        b.name:SetPoint("LEFT", 34, 0)
+        b.name:SetPoint("RIGHT", -50, 0)
+        b.c2:SetPoint("RIGHT", -6, 0)
+        b.c2:SetWidth(44)
+        b.c2:SetJustifyH("RIGHT")
+        local n = it.bagCount or 0
+        if n == 0 then
+          b.c2:SetText(RED .. "×0|r")
+        else
+          b.c2:SetText("×" .. n)
+        end
       end
     end
-  end
-  if #vm.sections == 0 then
-    b, y = takeLine(y, "section", SECTION_H)
-    b.name:SetPoint("LEFT", 6, 0)
-    b.name:SetText(L.NO_BUFFS)
   end
   for i = used + 1, #pool do pool[i]:Hide() end
   content:SetHeight(math.max(y, 1))
@@ -233,17 +278,17 @@ local function create()
   close:SetPoint("TOPRIGHT", -2, -2)
   close:SetScript("OnClick", function() frame:Hide() end)
 
-  onlyMissing = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-  onlyMissing:SetPoint("TOPLEFT", 12, -50)
-  onlyMissing:SetSize(24, 24)
-  onlyMissingLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  onlyMissingLabel:SetPoint("LEFT", onlyMissing, "RIGHT", 2, 0)
-  onlyMissing:SetScript("OnClick", function(self)
-    db().onlyMissing = self:GetChecked() and true or false
-    ns.ViewModel:Invalidate()
-    Popover:Refresh()
-    if ns.UI.Launcher then ns.UI.Launcher:Refresh() end
-  end)
+  -- Set switcher: a dropdown of the sets (shows the active one). If the client has no
+  -- dropdown template, fall back to a button that cycles through the sets.
+  setDropdown = ns.UI.SetDropdown and ns.UI.SetDropdown.Create(frame, 200)
+  if setDropdown then
+    setDropdown:SetPoint("TOPLEFT", 16, -52)
+  else
+    setButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    setButton:SetSize(200, 22)
+    setButton:SetPoint("TOPLEFT", 16, -52)
+    setButton:SetScript("OnClick", function() Popover:CycleSet() end)
+  end
 
   scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 14, -78)
@@ -266,6 +311,20 @@ local function create()
 end
 
 function Popover:GetLines() return pool, used end
+function Popover:GetSetButton() return setButton end
+function Popover:GetSetDropdown() return setDropdown end
+
+-- Activate the set after the current one in the view model's `sets` order.
+function Popover:CycleSet()
+  local sets = ns.ViewModel:Get().sets
+  for i, s in ipairs(sets) do
+    if s.active then
+      local nxt = sets[i % #sets + 1]
+      if nxt and not nxt.active then ns.Sets:SetActive(nxt.id) end
+      return
+    end
+  end
+end
 
 function Popover:Toggle()
   if not frame then create() end
@@ -273,6 +332,12 @@ function Popover:Toggle()
 end
 
 ns.Events:On("FULLBUFF_STATE", function()
+  if frame and frame:IsShown() then Popover:Refresh() end
+end)
+ns.Events:On("FULLBUFF_SET", function()
+  if frame and frame:IsShown() then Popover:Refresh() end
+end)
+ns.Events:On("FULLBUFF_BAGS", function()
   if frame and frame:IsShown() then Popover:Refresh() end
 end)
 ns.Events:On("FULLBUFF_LANGUAGE", function()
