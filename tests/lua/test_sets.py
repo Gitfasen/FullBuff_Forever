@@ -223,3 +223,43 @@ def test_auto_unchanged_recommendations_do_not_fire(addon):
     a.fire_event("PLAYER_ENTERING_WORLD", True, False)
     a.run("n = 0; ns.Events:On('FULLBUFF_SET', function() n = n + 1 end); ns.Events:Fire('FULLBUFF_STATE')")
     assert a.eval("n") == 0
+
+
+# --- fix A: default picks prefer buffs from players (CLASS) ---
+CLASSPREF = """
+ns.Catalog.Build = function()
+  return {order={'CLASS','CAMPING','SCROLL','FOOD'},
+    CLASS={{id=10938, cat='CLASS', excl='STA', status='CAN_ADD', fx={s=5}},
+           {id=21564, cat='CLASS', excl='STA', status='UNAVAILABLE', fx={s=50}},
+           {id=10157, cat='CLASS', excl='INT', status='CAN_ADD', fx={s=3}},
+           {id=23028, cat='CLASS', excl='INT', status='CAN_ADD', fx={s=4}},
+           {id=99, cat='CLASS', excl='BURSTY', status='CAN_ADD', burst=true, fx={s=9}}},
+    CAMPING={{id=1230124, cat='CAMPING', excl='STA', status='CAN_ADD', fx={s=20}},
+             {id=1229513, cat='CAMPING', excl='INT', status='ACTIVE', fx={s=30}},
+             {id=500, cat='CAMPING', excl='BURSTY', status='CAN_ADD', fx={s=1}}},
+    SCROLL={{id=1000, cat='SCROLL', excl='STA', status='CAN_ADD', fx={s=40}}},
+    FOOD={{id=20, cat='FOOD', excl='slotB', status='CAN_ADD', fx={s=1}}}}
+end
+ns.Scoring.Score = function(_, fx) return fx.s or 0 end
+ns.Scoring.MarkRecommended = function(_, cat)
+  local best = {}
+  for _, c in ipairs(cat.order) do for _, e in ipairs(cat[c]) do
+    e.recommended = nil
+    if not e.burst and e.status ~= 'UNAVAILABLE' and (not best[e.excl] or e.fx.s > best[e.excl].fx.s) then best[e.excl] = e end
+  end end
+  for _, e in pairs(best) do e.recommended = true end
+end
+"""
+
+
+def test_default_picks_prefer_class_buffs(addon):
+    a = addon()
+    a.run(SETUP)
+    a.run(CLASSPREF)
+    a.run("ns.Events:Fire('FULLBUFF_LOADED')")
+    picks = dict(a.eval("ns.Sets:Get(1).picks"))
+    # STA: Power Word: Fortitude over Scroll (40) and Boosted Stamina (20); Prayer unavailable
+    # INT: the better class buff (23028) over the active camp buff; BURSTY: burst class
+    # buff ignored -> recommendation; slotB: no class buff -> recommendation
+    assert picks == {"STA": 10938, "INT": 23028, "BURSTY": 500, "slotB": 20}
+    assert dict(a.eval("ns.Sets:Get(ns.Sets:Create('X')).picks")) == picks

@@ -64,18 +64,32 @@ function Sets:SetActive(id)
   changed()
 end
 
+-- Default picks (Create, auto sets): per slot with a recommendation, the best-scoring
+-- available (ACTIVE/CAN_ADD, non-burst) CLASS buff when there is one (buffs from
+-- players come first; ties: lower id), else the recommended entry.
 local function recommendedPicks()
   local picks = {}
   local ok, state = pcall(function() return ns.PlayerState:Get() end)
   if not ok or not state then return picks end
   local catalog = ns.Catalog:Build(state)
   ns.Scoring:MarkRecommended(catalog, state)
+  local classBest = {}
   for _, cat in ipairs(catalog.order or {}) do
     for _, e in ipairs(catalog[cat] or {}) do
       if e.recommended == true and not e.burst and e.excl then
         picks[e.excl] = e.id
       end
+      if cat == "CLASS" and e.excl and not e.burst and (e.status == "ACTIVE" or e.status == "CAN_ADD") then
+        local sc = ns.Scoring:Score(e.fx or {}, state)
+        local b = classBest[e.excl]
+        if not b or sc > b.score or (sc == b.score and e.id < b.id) then
+          classBest[e.excl] = { id = e.id, score = sc }
+        end
+      end
     end
+  end
+  for slot in pairs(picks) do
+    if classBest[slot] then picks[slot] = classBest[slot].id end
   end
   return picks
 end
