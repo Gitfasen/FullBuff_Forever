@@ -83,3 +83,33 @@ def test_uk_flask_wording_and_empty_set(addon):
         src = a.eval("(function() local t = {} for k, v in pairs(ns.Locales.%s) do t[#t + 1] = v end "
                      "return table.concat(t, ' ') end)()" % loc)
         assert "Фласк" not in src and "Фляги" not in src
+
+
+# --- fix A: camp buffs by level band ---
+WARRIOR20 = dict(STR=60, AGI=40, STA=55, INT=20, SPI=25, AP=120, ARMOR=600, HP=600, CRIT=5.0)
+
+
+def _entries(addon, cls, level, ids):
+    a = addon()
+    a.run("ns.DB = ns.DB or {}")
+    a.run("__ns.__st = {class=%r, spec=1, level=%d, stale=false, stats=%s,"
+          " ratios={hpPerSta=10, manaPerInt=15, apPerStr=2, apPerAgi=0, rapPerAgi=1, critPerAgi=0.05},"
+          " active={}, activeAura={}, unknownAuras={}}" % (cls, level, _tbl(WARRIOR20)))
+    a.run("__ns.__cat = ns.Catalog:Build(__ns.__st); ns.Scoring:MarkRecommended(__ns.__cat, __ns.__st)")
+    out = {}
+    for i in ids:
+        out[i] = a.eval("""(function() for k, l in pairs(__ns.__cat) do if k ~= 'order' then
+          for _, e in ipairs(l) do if e.id == %d then
+            return {fx=e.fx, rec=e.recommended, status=e.status, score=ns.Scoring:Score(e.fx, __ns.__st)}
+          end end end end end)()""" % i)
+    return out
+
+
+def test_real_camp_boosted_stats_level_20_band_and_motw_outscores(addon):
+    e = _entries(addon, "WARRIOR", 20, (1230653, 9885))
+    camp, motw = e[1230653], e[9885]
+    assert camp["fx"]["ARMOR"] == 114 and camp["fx"]["STA"] == 4 and camp["fx"]["STR"] == 4
+    assert camp["status"] == "CAN_ADD"
+    # a druid up to level 30 may buff a level-20 warrior: Mark of the Wild rank 30
+    assert motw["score"] > camp["score"]
+    assert motw["rec"] is True and camp["rec"] is None

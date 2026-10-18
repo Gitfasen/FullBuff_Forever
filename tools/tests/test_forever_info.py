@@ -109,3 +109,41 @@ def test_unresolved_exclusive_reported():
     result = unresolved_exclusives({1: wisdom}, camps())
     assert ("Boosted Mana Regeneration", "Blessing of Wisdom") not in result
     assert ("Boosted Attack Power", "Blessing of Might") in result
+
+
+# --- fix A: camp buffs by level bands ---
+STATS_FX = dict(AGI=13, ARMOR=308, INT=13, SPI=13, STA=13, STR=13)
+
+
+def test_parse_camping_keeps_bands():
+    lute = next(c for c in camps() if c.object_name == "Enchanted Lute")
+    assert [b[0] for b in lute.bands] == [1, 10, 20, 60]
+    assert "308 Armor" in lute.bands[-1][1]
+
+
+def test_apply_camping_builds_level_band_ranks():
+    motw = buff(1, "Mark of the Wild", "CLASS", excl="STATS", cls="DRUID")
+    lute = buff(1230653, "Boosted Stats")
+    lute.fx, lute.lvl = dict(STATS_FX), 0
+    bowl = buff(1230098, "Boosted Stats")
+    bowl.fx, bowl.lvl = {"STAT_PCT": 8}, 0
+    apply_camping({1: motw, 1230653: lute, 1230098: bowl}, [], camps())
+    assert [(r.spell, r.lvl) for r in lute.ranks] == [(1230653, 1), (1230653, 10), (1230653, 20),
+                                                       (1230653, 60)]
+    low, top = lute.ranks[0], lute.ranks[-1]
+    assert low.fx == dict(AGI=1, ARMOR=28, INT=1, SPI=1, STA=1, STR=1)
+    assert lute.ranks[2].fx == dict(AGI=4, ARMOR=114, INT=4, SPI=4, STA=4, STR=4)
+    assert top.fx == STATS_FX
+    assert lute.lvl == 1 and lute.fx == STATS_FX
+    # one band only: no ranks, unchanged
+    assert bowl.ranks is None and bowl.lvl == 0
+    # idempotent
+    apply_camping({1: motw, 1230653: lute, 1230098: bowl}, [], camps())
+    assert len(lute.ranks) == 4
+
+
+def test_band_ranks_missing_key_skipped_and_percent_kept():
+    from tools.sources.forever_info import band_ranks
+    bands = ((1, "gain 2% crit and 10 armor. cooldown 1 hrs."), (40, "gain 2% crit and 50 armor. cooldown 1 hrs."))
+    ranks = band_ranks(7, {"CRIT_PCT_X": 3, "ARMOR": 50, "AP": 99}, bands, pct_keys={"CRIT_PCT_X"})
+    assert [r.fx for r in ranks] == [{"CRIT_PCT_X": 3, "ARMOR": 10}, {"CRIT_PCT_X": 3, "ARMOR": 50}]
