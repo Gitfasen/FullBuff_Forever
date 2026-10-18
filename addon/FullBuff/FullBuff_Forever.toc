@@ -34,6 +34,7 @@ Engine\SetTracker.lua
 Systems\MapPins.lua
 
 UI\ViewModel.lua
+UI\SetDropdown.lua
 UI\Launcher.lua
 UI\Popover.lua
 UI\DetailCard.lua

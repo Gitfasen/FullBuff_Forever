@@ -13,7 +13,7 @@ local STAT_H, SECTION_H, ITEM_H = 16, 22, 32
 local RED = "|cffff2020"
 
 local CHECK = ns.UI.MARK_CHECK
-local frame, scroll, content, staleText, titleText, headerText, setButton
+local frame, scroll, content, staleText, titleText, headerText, setButton, setDropdown
 local pool, used = {}, 0
 
 local function db()
@@ -107,7 +107,11 @@ function Popover:Refresh()
   local vm = ns.ViewModel:Get()
   local L = ns.L
   titleText:SetText(L.TITLE)
-  setButton:SetText(string.format("%s: %s", L.SET_LABEL, vm.header.setName or ""))
+  if setDropdown then
+    ns.UI.SetDropdown.Refresh(setDropdown)
+  else
+    setButton:SetText(string.format("%s: %s", L.SET_LABEL, vm.header.setName or ""))
+  end
   -- one line under the title: the stale warning wins over the spec hint
   if vm.header.stale then
     staleText:SetText(L.STALE_AFTER_COMBAT)
@@ -274,12 +278,17 @@ local function create()
   close:SetPoint("TOPRIGHT", -2, -2)
   close:SetScript("OnClick", function() frame:Hide() end)
 
-  -- Set switcher: shows the active set's name; each click activates the next set in
-  -- ns.Sets:List() order (wrapping around). A full dropdown menu is not needed.
-  setButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  setButton:SetSize(200, 22)
-  setButton:SetPoint("TOPLEFT", 16, -52)
-  setButton:SetScript("OnClick", function() Popover:CycleSet() end)
+  -- Set switcher: a dropdown of the sets (shows the active one). If the client has no
+  -- dropdown template, fall back to a button that cycles through the sets.
+  setDropdown = ns.UI.SetDropdown and ns.UI.SetDropdown.Create(frame, 200)
+  if setDropdown then
+    setDropdown:SetPoint("TOPLEFT", 16, -52)
+  else
+    setButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    setButton:SetSize(200, 22)
+    setButton:SetPoint("TOPLEFT", 16, -52)
+    setButton:SetScript("OnClick", function() Popover:CycleSet() end)
+  end
 
   scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 14, -78)
@@ -303,6 +312,7 @@ end
 
 function Popover:GetLines() return pool, used end
 function Popover:GetSetButton() return setButton end
+function Popover:GetSetDropdown() return setDropdown end
 
 -- Activate the set after the current one in the view model's `sets` order.
 function Popover:CycleSet()

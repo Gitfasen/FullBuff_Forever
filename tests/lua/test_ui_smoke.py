@@ -221,12 +221,44 @@ def test_set_dropdown_switches_active(addon):
     a.load_addon()
     a.run(FIXTURE)
     a.run("ns.UI.Popover:Toggle()")
+    dd = "ns.UI.Popover:GetSetDropdown()"
+    assert a.eval("ns.UI.Popover:GetSetButton()") is None
+    assert a.eval(dd + ":GetText()") == "Main"
+    assert [e["text"] for e in a.eval(dd + ":__entries()").values()] == ["Main", "Empty"]
+    a.run(dd + ":__select(2)")
+    assert a.eval("(ns.Sets:Active())") == 2
+    assert a.eval(dd + ":GetText()") == "Empty"
+    assert any(l["kind"] == "empty" for l in popover_lines(a))
+    a.run(dd + ":__select(1)")
+    assert a.eval("(ns.Sets:Active())") == 1
+    assert a.errors() == []
+
+
+def test_set_dropdown_refreshes_on_set_and_language_events(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("ns.UI.Popover:Toggle(); __ns.gen = 0; local dd = ns.UI.Popover:GetSetDropdown(); "
+          "dd.GenerateMenu = function() __ns.gen = __ns.gen + 1 end")
+    a.run("ns.Sets:SetActive(2)")
+    assert a.eval("__ns.gen") >= 1
+    n = a.eval("__ns.gen")
+    a.run("ns.SetLanguage('uk')")
+    assert a.eval("__ns.gen") > n
+
+
+def test_set_button_fallback_without_dropdown_template(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("__dropdown.available = false")
+    a.run("ns.UI.Popover:Toggle()")
     btn = "ns.UI.Popover:GetSetButton()"
+    assert a.eval("ns.UI.Popover:GetSetDropdown()") is None
     assert a.eval(btn + ":GetText()") == "Set: Main"
     a.run("%s:GetScript('OnClick')(%s)" % (btn, btn))
     assert a.eval("(ns.Sets:Active())") == 2
     assert a.eval(btn + ":GetText()") == "Set: Empty"
-    assert any(l["kind"] == "empty" for l in popover_lines(a))
     a.run("%s:GetScript('OnClick')(%s)" % (btn, btn))  # wraps around
     assert a.eval("(ns.Sets:Active())") == 1
     assert a.errors() == []
