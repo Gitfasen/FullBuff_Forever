@@ -282,7 +282,8 @@ def test_pick_under_old_slot_key_matches_buff_slot(addon):
     assert "OLD_A" not in by and by["slotA"]["picked"] == 10
     vm = a.eval("ns.ViewModel:Build()")
     assert [r["buffId"] for r in vm["list"].values()] == [10]
-    assert vm["badge"] == 1
+    # Elixir B (ACTIVE) shares slotA: the slot is filled via it (fix A), nothing missing
+    assert vm["list"][1]["via"] == "Elixir B" and vm["badge"] == 0
     panel(a)
     assert a.eval(radio("slotA", 10) + ":GetChecked()") is True
     a.run("ns.Sets:Get(1).picks = {OLD_A=10}")

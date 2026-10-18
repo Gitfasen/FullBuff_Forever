@@ -99,6 +99,9 @@ L.SET_COPY_SUFFIX = " (copy)"
 
 L.IN_BAGS = "in bags ×%d"
 L.SET_UNAVAILABLE = "unavailable — pick a replacement in settings"
+-- Popover row sub-lines: a lower rank is up / the slot is filled by another buff.
+L.RANK_UPGRADE = "higher rank available"
+L.VIA = "via %s"
 L.BURST_TITLE = "Potions & trinkets"
 L.SET_EMPTY = "Set is empty — configure it in settings"
 L.SET_LABEL = "Set"

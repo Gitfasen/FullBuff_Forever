@@ -56,7 +56,9 @@ end
 -- With `picks` ({[slot]=buffId|false}) the chosen entries are those whose buff id is
 -- picked (ACTIVE or CAN_ADD, not burst), grouped by the entry's current excl (the
 -- slot key is ignored, so a rebuild that moved a buff still works). If two picked
--- entries share a group the higher Score wins (tie: lower id).
+-- entries share a group the higher Score wins (tie: lower id). An ACTIVE entry of
+-- the same group that was not picked replaces the pick when it scores at least as
+-- well (max for that slot = the buff already up).
 function MaxCalc:Compute(state, catalog, picks)
   local reported = state and state.stats or {}
   catalog = catalog or {}
@@ -94,11 +96,25 @@ function MaxCalc:Compute(state, catalog, picks)
       end
     end
   end
+  -- A slot whose picked buff is not the one up: keep the active member when it
+  -- scores at least as well as the pick (the slot is already filled by it).
+  if pickedId then
+    for _, e in ipairs(all) do
+      local b = best[groupKey(e)]
+      if b and b.e ~= e and e.status == "ACTIVE" and not e.burst and e.excl then
+        local sc = ns.Scoring:Score(e.fx or {}, state)
+        if sc >= b.score and (not b.kept or sc > b.score) then
+          b.e, b.score, b.kept = e, sc, true
+        end
+      end
+    end
+  end
   for g, b in pairs(best) do
     chosen[#chosen + 1] = b.e
     chosenGroup[g] = true
   end
-  -- An active lower rank (status CAN_ADD, activeFx set: an upgrade) is active too.
+  -- An active lower rank (status ACTIVE with upgrade, activeFx set) counts with its
+  -- activeFx; the chosen entry's fx is the best rank.
   -- Only active non-burst buffs whose group has a chosen entry are removed from
   -- the baseline. Active burst buffs and active buffs nobody would pick (score 0
   -- for this spec) stay in current AND max, so max is never below current.

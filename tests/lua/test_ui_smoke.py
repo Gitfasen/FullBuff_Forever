@@ -351,3 +351,21 @@ def test_launcher_tooltip_all_active_and_empty(addon):
         lines = list(a.eval("GameTooltip.__lines").values())
         assert done not in lines
         assert any(l.startswith(empty) for l in lines), lines
+
+
+def test_popover_upgrade_and_via_sublines(addon):
+    a = addon()
+    a.load_addon()
+    a.run(FIXTURE)
+    a.run("""local cat = ns.Catalog.Build()
+      cat.CLASS[1].upgrade = true
+      table.insert(cat.CLASS, {id=4, cat="CLASS", name="Charlie", excl="s2", fx={STR=5}, status="ACTIVE"})
+      ns.ViewModel:Invalidate(); ns.UI.Popover:Toggle()""")
+    items = {l["name"]: l for l in popover_lines(a) if l["kind"] == "item"}
+    assert items[CHECK + " Alpha"]["sub"] == "+10 Strength  ·  higher rank available"
+    assert items[CHECK + " Bravo"]["sub"] == "+5 Strength  ·  via Charlie"
+    a.run("ns.SetLanguage('uk'); ns.ViewModel:Invalidate(); ns.UI.Popover:Refresh()")
+    subs = [l["sub"] for l in popover_lines(a) if l["kind"] == "item"]
+    assert any(s.endswith("доступний вищий ранг") for s in subs)
+    assert any(s.endswith("через Charlie") for s in subs)
+    assert a.errors() == []

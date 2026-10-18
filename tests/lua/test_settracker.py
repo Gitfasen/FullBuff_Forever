@@ -100,3 +100,53 @@ def test_rows_carry_slot_name(addon):
     _, r = ev(addon, "{picks={s1=1, gone=2}, burst={}}")
     names = {x["slot"]: x["slotName"] for x in r["rows"].values()}
     assert names == {"s1": "S1", "gone": "gone"}
+
+
+# --- fix A ---
+def test_active_upgrade_row_flagged_not_missing(addon):
+    a = addon()
+    a.run(SETUP)
+    a.run("CAT.FOOD[2].upgrade = true; __ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={s2=2}, burst={}})")
+    r = a.eval("__ns.__r")
+    x = r["rows"][1]
+    assert x["status"] == "ACTIVE" and x["upgrade"] is True
+    assert r["missingCount"] == 0
+    a.run("__ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={zz=5}, burst={}})")
+    assert a.eval("__ns.__r").rows[1]["upgrade"] is None
+
+
+VIA = """
+ns.Buffs = {[21564]={name='Prayer of Fortitude', excl='STA', items={}},
+  [10938]={name='Power Word: Fortitude', excl='STA', items={}},
+  [1230653]={name='Boosted Stats', excl='STATS', items={}},
+  [9885]={name='Mark of the Wild', excl='STATS', items={}}}
+ns.Bags.CountBuff = function() return 0 end
+ns.ViewModel.FormatFx = function(fx) return fx and fx.txt or '' end
+ns.ViewModel.IconFor = function(sp) return 'icon' .. tostring(sp) end
+CAT = {order={'CLASS', 'CAMPING'},
+  CLASS={{id=21564, name='Prayer of Fortitude', excl='STA', status='UNAVAILABLE', fx={txt='p'}},
+         {id=10938, name='Power Word: Fortitude', excl='STA', status='ACTIVE', fx={txt='f'}},
+         {id=9885, name='Mark of the Wild', excl='STATS', status='ACTIVE', fx={txt='m'}}},
+  CAMPING={{id=1230653, name='Boosted Stats', excl='STATS', status='CAN_ADD', fx={txt='b'}}}}
+"""
+
+
+def test_slot_satisfied_by_other_active_member(addon):
+    a = addon()
+    a.run(VIA)
+    a.run("__ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={STA=21564, STATS=1230653}, burst={}})")
+    r = a.eval("__ns.__r")
+    got = {x["buffId"]: x for x in r["rows"].values()}
+    assert got[21564]["status"] == "ACTIVE" and got[21564]["via"] == "Power Word: Fortitude"
+    assert got[1230653]["status"] == "ACTIVE" and got[1230653]["via"] == "Mark of the Wild"
+    assert got[1230653]["valueText"] == "m"
+    assert r["missingCount"] == 0 and r["unavailableCount"] == 0
+    assert a.errors() == []
+
+
+def test_picked_active_has_no_via(addon):
+    a = addon()
+    a.run(VIA)
+    a.run("__ns.__r = ns.SetTracker:Evaluate({}, CAT, {picks={STA=10938}, burst={}})")
+    x = a.eval("__ns.__r").rows[1]
+    assert x["status"] == "ACTIVE" and x["via"] is None

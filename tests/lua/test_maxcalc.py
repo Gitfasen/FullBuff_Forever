@@ -411,9 +411,58 @@ def test_picked_upgrade_replaces_active_lower_rank(addon):
     assert rows["STR"] == (100, 106)
 
 
-def test_active_in_group_of_other_pick_is_swapped(addon):
-    # active A {STR=10} is inside the 100; picking B {STR=5}: 100 - 10 + 5
+def test_active_in_group_of_other_pick_is_kept_when_better(addon):
+    # active A {STR=10} is inside the 100; picking the weaker B {STR=5} keeps A (fix A):
+    # max for the slot is the better of the pick and the buff already up
     rows, _ = compute_picks(addon, """
       E(1, "FOOD", "A", "food", {STR=10}, "ACTIVE"),
       E(2, "FOOD", "B", "food", {STR=5}),""", "{food=2}")
-    assert rows["STR"] == (100, 95)
+    assert rows["STR"] == (100, 100)
+
+
+# --- fix A: an active lower rank stays ACTIVE with upgrade = true ---
+def test_active_upgrade_entry_uses_best_rank_minus_active(addon):
+    # recommended (no picks): STA 80 includes rank STA 20 -> 80 - 20 + 54 = 114
+    _, res, rows, _, _ = compute(addon, make_state(), """
+      (function() local e = E(7, "CLASS", "Fortitude", "fort", {STA=54}, "ACTIVE")
+        e.activeFx = {STA=20}; e.upgrade = true; return e end)(),
+    """)
+    assert rows["STA"][:2] == (80, 114)
+
+
+def test_picked_active_upgrade_max_is_current_minus_active_plus_best(addon):
+    rows, _ = compute_picks(addon, """
+      {id=1, cat="FOOD", name="A", excl="food", fx={STR=10}, activeFx={STR=4}, status="ACTIVE", upgrade=true},""",
+                            "{food=1}")
+    assert rows["STR"] == (100, 106)
+
+
+# --- fix A: a slot satisfied by another active member ---
+def test_active_member_better_than_pick_keeps_slot(addon):
+    # active A {STR=10} in the 100; pick B {STR=5} scores lower -> slot stays A: max 100
+    rows, _ = compute_picks(addon, """
+      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "CAMPING", "B", "food", {STR=5}),""", "{food=2}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_active_member_equal_to_pick_keeps_slot(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "CAMPING", "B", "food", {STR=10}),""", "{food=2}")
+    assert rows["STR"] == (100, 100)
+
+
+def test_pick_better_than_active_member_replaces_it(addon):
+    # active A {STR=10}; pick B {STR=15}: 100 - 10 + 15
+    rows, _ = compute_picks(addon, """
+      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "CAMPING", "B", "food", {STR=15}),""", "{food=2}")
+    assert rows["STR"] == (100, 105)
+
+
+def test_unavailable_pick_with_active_member_keeps_it(addon):
+    rows, _ = compute_picks(addon, """
+      E(1, "CLASS", "A", "food", {STR=10}, "ACTIVE"),
+      E(2, "CLASS", "B", "food", {STR=15}, "UNAVAILABLE"),""", "{food=2}")
+    assert rows["STR"] == (100, 100)

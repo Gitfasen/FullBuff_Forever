@@ -10,7 +10,8 @@ local _, ns = ...
 --              specName: the talent tree's name, else "Specialization N"; specHint: set
 --              while the spec is not detected automatically)
 --   sets    = { {id, name, active}... }   in ns.Sets:List() order,
---   list    = SetTracker rows of the active set {slot,slotName,buffId,name,icon,valueText,status,bagCount}
+--   list    = SetTracker rows of the active set {slot,slotName,buffId,name,icon,valueText,status,
+--             via,upgrade,bagCount} (via: the active buff filling the slot; upgrade: a lower rank is up)
 --             (status ACTIVE, MISSING, UNAVAILABLE, already in that order),
 --   burst   = SetTracker burst rows {buffId,name,icon,bagCount,unavailable},
 --   empty   = true when the active set has neither picks nor burst buffs (or there is no set),

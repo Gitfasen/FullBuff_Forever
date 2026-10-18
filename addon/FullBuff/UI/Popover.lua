@@ -172,8 +172,11 @@ function Popover:Refresh()
       b.name:SetText(it.name)
     end
     if it.status == "UNAVAILABLE" then sub = L.SET_UNAVAILABLE end
+    local function append(text) sub = (sub ~= "" and (sub .. "  ·  ") or "") .. text end
+    if it.via then append(L.VIA:format(it.via)) end
+    if it.upgrade then append(L.RANK_UPGRADE) end
     if nameCount[it.name] > 1 and it.slotName then
-      sub = (sub ~= "" and (sub .. "  ·  ") or "") .. it.slotName
+      append(it.slotName)
     end
     if it.status == "MISSING" and (it.bagCount or 0) > 0 then
       sub = sub .. "  " .. L.IN_BAGS:format(it.bagCount)
